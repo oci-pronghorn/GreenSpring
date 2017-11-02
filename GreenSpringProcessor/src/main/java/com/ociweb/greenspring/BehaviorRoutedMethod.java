@@ -1,5 +1,6 @@
 package com.ociweb.greenspring;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ociweb.gl.api.HTTPRequestReader;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.squareup.javapoet.*;
@@ -63,10 +64,6 @@ class BehaviorRoutedMethod {
         }
     }
 
-    String getRoute() {
-        return route;
-    }
-
     String getDispatchName() {
         return "_" + methodName;
     }
@@ -82,47 +79,47 @@ class BehaviorRoutedMethod {
 
         builder
                 .addMethod(paramToString)
+                .addField(FieldSpec.builder(ObjectMapper.class, "mapper", Modifier.PRIVATE, Modifier.FINAL)
+                    .initializer("new $T()", ObjectMapper.class)
+                    .build())
                 .addField(FieldSpec.builder(StringBuilder.class, "paramBuffer", Modifier.PRIVATE, Modifier.FINAL)
                     .initializer("new StringBuilder()")
                     .build());
     }
 
     MethodSpec createMethodSpec() {
-        String declareList = orderedParams.stream().map(this::greenDeclaration).collect(Collectors.joining());
+        MethodSpec.Builder method = MethodSpec.methodBuilder(getDispatchName())
+                .addModifiers(Modifier.PRIVATE)
+                .addParameter(HTTPRequestReader.class, "httpRequestReader")
+                .returns(boolean.class);
+
+        for (VariableElement param : orderedParams) {
+            TypeName kind = TypeName.get(param.asType());
+            String name = param.getSimpleName().toString();
+            method.addCode("$T " + name, kind);
+            RequestBody requestBodyParam = param.getAnnotation(RequestBody.class);
+            if (requestBodyParam != null) {
+               method.addCode(" = null;\n");
+            }
+            else {
+                PathVariable routeParam = param.getAnnotation(PathVariable.class);
+                if (routeParam != null) {
+                    String key = kind.toString();
+                    method.addCode(String.format(init.get(key), routedIds.get(name)));
+                }
+                else {
+                    method.addCode(";\n");
+                }
+            }
+        }
+
         String paramList = orderedParams.stream().map(VariableElement::getSimpleName).collect(Collectors.joining(", "));
-        String code =
-                declareList +
+        method.addCode(
                 "$T response = service." + methodName + "(" + paramList + ");\n" +
                 "// TODO: serialize response json\n" +
                 "channel.publishHTTPResponse(httpRequestReader, response.getStatusCodeValue(), $T.JSON, (w)->{w.writeUTF(\"{}\");});\n" +
-                "return true;\n";
-        return MethodSpec.methodBuilder(getDispatchName())
-                .addModifiers(Modifier.PRIVATE)
-                .addParameter(HTTPRequestReader.class, "httpRequestReader")
-                .returns(boolean.class)
-                .addCode(code, ClassName.get(ResponseEntity.class), ClassName.get(HTTPContentTypeDefaults.class))
-                .build();
-    }
-
-    private String greenDeclaration(VariableElement p) {
-        String name = p.getSimpleName().toString();
-        String kind = p.asType().toString();
-        String declare = kind + " " + name;
-
-        RequestBody requestBodyParam = p.getAnnotation(RequestBody.class);
-        if (requestBodyParam != null) {
-            declare += " = null; // TODO: deserialize request body\n";
-        }
-        else {
-            PathVariable routeParam = p.getAnnotation(PathVariable.class);
-            if (routeParam != null) {
-                declare += String.format(init.get(kind), routedIds.get(name));
-            }
-            else {
-                declare += ";\n";
-            }
-        }
-        return declare;
+                "return true;\n", ClassName.get(ResponseEntity.class), ClassName.get(HTTPContentTypeDefaults.class));
+        return method.build();
     }
 
     String getGreenRoute(String base) {
