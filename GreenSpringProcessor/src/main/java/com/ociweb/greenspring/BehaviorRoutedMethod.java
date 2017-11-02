@@ -1,9 +1,11 @@
 package com.ociweb.greenspring;
 
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ociweb.gl.api.HTTPRequestReader;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.squareup.javapoet.*;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -12,10 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.VariableElement;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 class BehaviorRoutedMethod {
@@ -83,23 +82,43 @@ class BehaviorRoutedMethod {
                     .initializer("new $T()", ObjectMapper.class)
                     .build())
                 .addField(FieldSpec.builder(StringBuilder.class, "paramBuffer", Modifier.PRIVATE, Modifier.FINAL)
-                    .initializer("new StringBuilder()")
+                    .initializer("new $T()", StringBuilder.class)
+                    .build())
+                .addField(FieldSpec.builder(ResponseEntity.class, "badRequest", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+                    .initializer("new $T($T.BAD_REQUEST)", ResponseEntity.class, HttpStatus.class)
                     .build());
     }
 
-    MethodSpec createMethodSpec() {
-        MethodSpec.Builder method = MethodSpec.methodBuilder(getDispatchName())
+    private CodeBlock initializerForType(TypeName kind) {
+        if (kind instanceof ParameterizedTypeName) {
+            ParameterizedTypeName param = (ParameterizedTypeName)kind;
+            TypeName sub = param.typeArguments.get(0);
+            return CodeBlock.of("mapper.getTypeFactory().constructCollectionType($T.class, $T.class)", ArrayList.class, sub);
+        }
+        return CodeBlock.of(kind.toString() + kind.getClass());
+    }
+
+    void injectDispatch(TypeSpec.Builder builder) {
+        String dispatchName = getDispatchName();
+        MethodSpec.Builder method = MethodSpec.methodBuilder(dispatchName)
                 .addModifiers(Modifier.PRIVATE)
                 .addParameter(HTTPRequestReader.class, "httpRequestReader")
+                .addCode("$T response = badRequest;\n", ResponseEntity.class)
+                .addCode("try {\n")
                 .returns(boolean.class);
 
         for (VariableElement param : orderedParams) {
             TypeName kind = TypeName.get(param.asType());
             String name = param.getSimpleName().toString();
-            method.addCode("$T " + name, kind);
+            method.addCode("    $T " + name, kind);
             RequestBody requestBodyParam = param.getAnnotation(RequestBody.class);
+            String requestBodyType = dispatchName + "RequestBodyType";
             if (requestBodyParam != null) {
-               method.addCode(" = null;\n");
+                builder.addField(FieldSpec.builder(JavaType.class, requestBodyType)
+                        .addModifiers(Modifier.PRIVATE, Modifier.FINAL)
+                        .initializer(initializerForType(kind))
+                        .build());
+                method.addCode(" = mapper.readValue(\"[]\", " + requestBodyType + ");\n");
             }
             else {
                 PathVariable routeParam = param.getAnnotation(PathVariable.class);
@@ -115,11 +134,17 @@ class BehaviorRoutedMethod {
 
         String paramList = orderedParams.stream().map(VariableElement::getSimpleName).collect(Collectors.joining(", "));
         method.addCode(
-                "$T response = service." + methodName + "(" + paramList + ");\n" +
-                "// TODO: serialize response json\n" +
-                "channel.publishHTTPResponse(httpRequestReader, response.getStatusCodeValue(), $T.JSON, (w)->{w.writeUTF(\"{}\");});\n" +
-                "return true;\n", ClassName.get(ResponseEntity.class), ClassName.get(HTTPContentTypeDefaults.class));
-        return method.build();
+                "    response = service." + methodName + "(" + paramList + ");\n" +
+                "}\n" +
+                "catch (Exception e) {\n" +
+                "}\n" +
+                "finally {\n" +
+                 "    // TODO: serialize response json\n" +
+                "    channel.publishHTTPResponse(httpRequestReader, response.getStatusCodeValue(), $T.JSON, (w)->{w.writeUTF(\"{}\");});\n" +
+                "}\n" +
+                "return true;\n", HTTPContentTypeDefaults.class);
+
+       builder.addMethod(method.build());
     }
 
     String getGreenRoute(String base) {

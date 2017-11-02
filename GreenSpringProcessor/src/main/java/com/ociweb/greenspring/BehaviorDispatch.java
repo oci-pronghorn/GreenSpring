@@ -64,7 +64,7 @@ class BehaviorDispatch {
     void injectResource(TypeSpec.Builder builder, RequestMapping mapping, ExecutableElement element) {
         BehaviorRoutedMethod routedMethod = new BehaviorRoutedMethod(mapping, element);
         routes.add(routedMethod);
-        builder.addMethod(routedMethod.createMethodSpec());
+        routedMethod.injectDispatch(builder);
     }
 
     void injectRoutes(TypeSpec.Builder builder) {
