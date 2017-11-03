@@ -43,18 +43,9 @@ class BehaviorDispatch {
                 .addCode("runtime.addRestListener(new $T(runtime)).includeRoutes(routeIds);\n", behaviorName)
                 .build();
 
-        MethodSpec restRequest = MethodSpec.methodBuilder("restRequest")
-                .addModifiers(Modifier.PUBLIC)
-                .addAnnotation(Override.class)
-                .addParameter(HTTPRequestReader.class, "httpRequestReader")
-                .returns(boolean.class)
-                .addCode("return (($T)dispatch[httpRequestReader.getRouteId() - routeOffset]).apply(this, httpRequestReader);\n", function)
-                .build();
-
         builder
                 .addField(FieldSpec.builder(int.class, "routeOffset", Modifier.PRIVATE, Modifier.STATIC).build())
-                .addMethod(behaviorInvocation)
-                .addMethod(restRequest);
+                .addMethod(behaviorInvocation);
         BehaviorRoutedMethod.injectStructure(builder);
     }
 
@@ -84,6 +75,14 @@ class BehaviorDispatch {
             config.addCode("routeOffset = -1;\n");
         }
 
+        MethodSpec restRequest = MethodSpec.methodBuilder("restRequest")
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(Override.class)
+                .addParameter(HTTPRequestReader.class, "httpRequestReader")
+                .returns(boolean.class)
+                .addCode(routes.isEmpty() ? "return true;\n" : "return (($T)dispatch[httpRequestReader.getRouteId() - routeOffset]).apply(this, httpRequestReader);\n", function)
+                .build();
+
         builder
                 .addField(FieldSpec.builder(int[].class, "routeIds", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
                         .initializer("new $T[$L]", int.class, routeCount)
@@ -91,6 +90,7 @@ class BehaviorDispatch {
                 .addField(FieldSpec.builder(BiFunction[].class, "dispatch", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
                         .initializer("new $T[$L]", BiFunction.class, routeCount)
                         .build())
-                .addMethod(config.build());
+                .addMethod(config.build())
+                .addMethod(restRequest);
     }
 }
