@@ -14,20 +14,20 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-class AppStructure {
+class GreenSpringAppBuilder {
     private final int port;
-    private final List<BehaviorStructure> models = new ArrayList<>();
+    private final List<GreenBehaviorBuilder> models = new ArrayList<>();
     private final String appName;
     private final String subPackage;
     private String topPackage = null;
 
-    AppStructure(String appName, String subPackage, int port) {
+    GreenSpringAppBuilder(String appName, String subPackage, int port) {
         this.appName = appName;
         this.subPackage = subPackage;
         this.port = port;
     }
 
-    void addBehavior(BehaviorStructure model) {
+    void addBehavior(GreenBehaviorBuilder model) {
         models.add(model);
 
         String newPackage = model.getBehaviorName().packageName();
@@ -63,7 +63,7 @@ class AppStructure {
                 .addCode("builder.enableServer(false, $L);\n", port)
                 .addCode("builder.useInsecureNetClient();\n");
 
-        for (BehaviorStructure model : models) {
+        for (GreenBehaviorBuilder model : models) {
             declareConfiguration.addCode("$T.$L(builder);\n", model.getBehaviorName(), model.getConfigInvocation());
         }
 
@@ -76,7 +76,7 @@ class AppStructure {
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(GreenRuntime.class, "runtime");
 
-        for (BehaviorStructure model : models) {
+        for (GreenBehaviorBuilder model : models) {
             declareBehavior.addCode("$T.$L(runtime);\n", model.getBehaviorName(), model.getBehaviorInvocation());
         }
 
@@ -95,7 +95,7 @@ class AppStructure {
                 .skipJavaLangImports(true)
                 .indent(indent);
 
-        for (BehaviorStructure behavior : models) {
+        for (GreenBehaviorBuilder behavior : models) {
             behavior.write(filer, indent);
         }
 

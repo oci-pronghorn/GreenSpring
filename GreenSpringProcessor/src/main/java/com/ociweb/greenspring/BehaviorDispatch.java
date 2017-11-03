@@ -15,7 +15,7 @@ import java.util.function.BiFunction;
 class BehaviorDispatch {
     private final ClassName behaviorName;
     private final String route;
-    private final List<BehaviorRoutedMethod> routes = new ArrayList<>();
+    private final List<GreenRouteBuilder> routes = new ArrayList<>();
     private final ParameterizedTypeName function;
 
     BehaviorDispatch(ClassName behaviorName, String route) {
@@ -46,11 +46,11 @@ class BehaviorDispatch {
         builder
                 .addField(FieldSpec.builder(int.class, "routeOffset", Modifier.PRIVATE, Modifier.STATIC).build())
                 .addMethod(behaviorInvocation);
-        BehaviorRoutedMethod.injectStructure(builder);
+        GreenRouteBuilder.injectStructure(builder);
     }
 
     void injectResource(TypeSpec.Builder builder, RequestMapping mapping, ExecutableElement element) {
-        BehaviorRoutedMethod routedMethod = new BehaviorRoutedMethod(mapping, element);
+        GreenRouteBuilder routedMethod = new GreenRouteBuilder(mapping, element);
         routes.add(routedMethod);
         routedMethod.injectDispatch(builder);
     }
@@ -63,7 +63,7 @@ class BehaviorDispatch {
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                 .addParameter(Builder.class, "builder");
         for (int i = 0; i < routeCount; i++) {
-            BehaviorRoutedMethod method = (BehaviorRoutedMethod) methods[i];
+            GreenRouteBuilder method = (GreenRouteBuilder) methods[i];
             config.addCode("routeIds[$L] = builder.registerRoute($S);\n", i, method.getGreenRoute(route));
             config.addCode("dispatch[$L] = ($T)$T::$L;\n", i, function, behaviorName, method.getDispatchName());
         }

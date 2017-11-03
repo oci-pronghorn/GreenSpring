@@ -17,17 +17,21 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
 import java.io.IOException;
 
-class BehaviorStructure {
+class GreenBehaviorBuilder {
     private final ClassName serviceName;
     private final ClassName behaviorName;
     private final TypeSpec.Builder builder;
     private final BehaviorDispatch dispatch;
+    private final boolean sharedChannel;
+    private final boolean sharedService;
 
-    BehaviorStructure(RequestMapping mapping, Element element, String subPackage) throws ClassNotFoundException {
+    GreenBehaviorBuilder(RequestMapping mapping, Element element, String subPackage, boolean sharedChannel, boolean sharedService) throws ClassNotFoundException {
         Element enclosingElement = element.getEnclosingElement();
         PackageElement packageElement = (PackageElement)enclosingElement;
         this.serviceName = ClassName.get(packageElement.getQualifiedName().toString(), element.getSimpleName().toString());
         this.behaviorName = ClassName.get(packageElement.getQualifiedName().toString() + subPackage, "Green" + element.getSimpleName().toString());
+        this.sharedChannel = sharedChannel;
+        this.sharedService = sharedService;
         String routeStr = mapping.value().length > 0 ? mapping.value()[0] : "/";
         String baseRoute = routeStr.substring(0, routeStr.length()-1);
         this.builder = createTypeBuilder();

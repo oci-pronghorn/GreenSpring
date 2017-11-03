@@ -35,14 +35,14 @@ public class CreateGreenSpringApp extends AbstractProcessor {
         if (annotations.isEmpty()) {
             return true;
         }
-        AppStructure app = new AppStructure(appName, subPackage, port);
-        BehaviorStructure current = null;
+        GreenSpringAppBuilder app = new GreenSpringAppBuilder(appName, subPackage, port);
+        GreenBehaviorBuilder current = null;
         for (Element element : roundEnv.getElementsAnnotatedWith(RequestMapping.class)) {
             RequestMapping mapping = element.getAnnotation(RequestMapping.class);
             if (element.getKind() == ElementKind.CLASS) {
                 current = null;
                 try {
-                    current = new BehaviorStructure(mapping, element, subPackage);
+                    current = new GreenBehaviorBuilder(mapping, element, subPackage, true, true);
                     app.addBehavior(current);
                 } catch (ClassNotFoundException e) {
                     messager.printMessage(Diagnostic.Kind.ERROR, e.getLocalizedMessage(), element);

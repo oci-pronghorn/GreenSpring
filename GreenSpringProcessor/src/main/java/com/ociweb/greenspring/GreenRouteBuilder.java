@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-class BehaviorRoutedMethod {
+class GreenRouteBuilder {
     private final String route;
     private final String methodName;
     private final Map<String, String> routedParams = new HashMap<>();
@@ -48,7 +48,7 @@ class BehaviorRoutedMethod {
         init.put("double", " = httpRequestReader.getDouble(%d);\n");
     }
 
-    BehaviorRoutedMethod(RequestMapping mapping, ExecutableElement element) {
+    GreenRouteBuilder(RequestMapping mapping, ExecutableElement element) {
         this.route = mapping.value().length > 0 ? mapping.value()[0] : "";
         this.methodName = element.getSimpleName().toString();
 
