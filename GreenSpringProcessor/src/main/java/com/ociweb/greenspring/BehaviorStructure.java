@@ -51,10 +51,11 @@ class BehaviorStructure {
         this.dispatch.injectResource(builder, mapping, element);
     }
 
-    void write(Filer filer) throws IOException {
+    void write(Filer filer, String indent) throws IOException {
         this.dispatch.injectRoutes(builder);
         JavaFile.builder(this.serviceName.packageName(), builder.build())
-                .indent("    ")
+                .skipJavaLangImports(true)
+                .indent(indent)
                 .build()
                 .writeTo(filer);
     }

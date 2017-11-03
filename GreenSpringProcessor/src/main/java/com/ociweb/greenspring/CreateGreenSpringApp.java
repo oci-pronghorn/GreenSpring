@@ -18,6 +18,7 @@ import java.util.Set;
 public class CreateGreenSpringApp extends AbstractProcessor {
     private Filer filer;
     private Messager messager;
+    private final String indent = "    ";
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -48,7 +49,7 @@ public class CreateGreenSpringApp extends AbstractProcessor {
             }
         }
         try {
-            app.write(filer);
+            app.write(filer, indent);
         } catch (IOException e) {
             messager.printMessage(Diagnostic.Kind.ERROR, e.getLocalizedMessage());
         }

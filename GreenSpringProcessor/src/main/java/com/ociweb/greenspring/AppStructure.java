@@ -31,7 +31,7 @@ class AppStructure {
         models.add(model);
     }
 
-    void write(Filer filer) throws IOException {
+    void write(Filer filer, String indent) throws IOException {
 
         MethodSpec.Builder declareConfiguration = MethodSpec.methodBuilder("declareConfiguration")
                 .addModifiers(Modifier.PUBLIC)
@@ -69,10 +69,11 @@ class AppStructure {
             .addMethod(declareParallelBehavior.build());
 
         JavaFile.Builder java = JavaFile.builder(appName.packageName(), this.builder.build())
-                .indent("    ");
+                .skipJavaLangImports(true)
+                .indent(indent);
 
         for (BehaviorStructure behavior : models) {
-            behavior.write(filer);
+            behavior.write(filer, indent);
         }
 
         java.build().writeTo(filer);

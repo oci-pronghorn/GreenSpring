@@ -40,7 +40,7 @@ class BehaviorDispatch {
         MethodSpec behaviorInvocation = MethodSpec.methodBuilder(getBehaviorInvocation())
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                 .addParameter(GreenRuntime.class, "runtime")
-                .addCode("runtime.addRestListener(new $T(runtime)).includeRoutes(routeIds);\n", behaviorName)
+                .addCode("runtime.registerListener(new $T(runtime)).includeRoutes(routeIds);\n", behaviorName)
                 .build();
 
         builder
