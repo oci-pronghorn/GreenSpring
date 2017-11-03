@@ -20,7 +20,7 @@ public class CreateGreenSpringApp extends AbstractProcessor {
     private Messager messager;
     private final String indent = "    ";
     private final String appName =  "GreenSpringApp";
-    private final String subPackage =  ".green";
+    private final String subPackage =  "";
     private final int port =  80;
 
     @Override

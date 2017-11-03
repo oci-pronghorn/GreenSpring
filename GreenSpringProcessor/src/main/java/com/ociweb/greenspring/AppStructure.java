@@ -50,7 +50,7 @@ class AppStructure {
 
     void write(Filer filer, String indent) throws IOException {
 
-        ClassName buildName = ClassName.get(topPackage, "GreenSpringApp");
+        ClassName buildName = ClassName.get(topPackage + subPackage, appName);
 
         TypeSpec.Builder builder = TypeSpec.classBuilder(buildName)
                 .addModifiers(Modifier.PUBLIC)
