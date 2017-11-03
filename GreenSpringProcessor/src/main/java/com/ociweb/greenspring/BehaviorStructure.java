@@ -27,7 +27,7 @@ class BehaviorStructure {
         Element enclosingElement = element.getEnclosingElement();
         PackageElement packageElement = (PackageElement)enclosingElement;
         this.serviceName = ClassName.get(packageElement.getQualifiedName().toString(), element.getSimpleName().toString());
-        this.behaviorName = ClassName.get(packageElement.getQualifiedName().toString(), "Behavior" + element.getSimpleName().toString());
+        this.behaviorName = ClassName.get(packageElement.getQualifiedName().toString(), "Green" + element.getSimpleName().toString());
         String routeStr = mapping.value().length > 0 ? mapping.value()[0] : "/";
         String baseRoute = routeStr.substring(0, routeStr.length()-1);
         this.builder = createTypeBuilder();

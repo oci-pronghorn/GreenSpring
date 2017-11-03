@@ -31,7 +31,7 @@ class BehaviorRoutedMethod {
     private final static Map<String, String> spec = new HashMap<>();
     private final static Map<String, String> init = new HashMap<>();
     static {
-        spec.put("java.lang.String", "$$");
+        spec.put("java.lang.String", "$");
         spec.put("byte", "#");
         spec.put("short", "#");
         spec.put("int", "#");
@@ -68,7 +68,7 @@ class BehaviorRoutedMethod {
     }
 
     String getDispatchName() {
-        return "_" + methodName;
+        return "GL" + methodName;
     }
 
     static void injectStructure(TypeSpec.Builder builder) {
@@ -123,8 +123,10 @@ class BehaviorRoutedMethod {
         MethodSpec.Builder method = MethodSpec.methodBuilder(dispatchName)
                 .addModifiers(Modifier.PRIVATE)
                 .addParameter(HTTPRequestReader.class, "httpRequestReader")
-                .addCode("try {\n")
                 .returns(boolean.class);
+
+        method.addCode(
+                "try {\n");
 
         for (VariableElement param : orderedParams) {
             TypeName kind = TypeName.get(param.asType());
@@ -158,9 +160,9 @@ class BehaviorRoutedMethod {
                 "    channel.publishHTTPResponse(httpRequestReader, response.getStatusCodeValue(), $T.JSON, writer);\n" +
                 "}\n" +
                 "catch (Exception e) {\n" +
-                "    channel.publishHTTPResponse(httpRequestReader, badRequest.getStatusCodeValue(), HTTPContentTypeDefaults.JSON, null);\n" +
+                "    channel.publishHTTPResponse(httpRequestReader, badRequest.getStatusCodeValue(), $T.JSON, null);\n" +
                 "}\n" +
-                "return true;\n", ResponseEntity.class, Writable.class, HTTPContentTypeDefaults.class);
+                "return true;\n", ResponseEntity.class, Writable.class, HTTPContentTypeDefaults.class, HTTPContentTypeDefaults.class);
 
        builder.addMethod(method.build());
     }
