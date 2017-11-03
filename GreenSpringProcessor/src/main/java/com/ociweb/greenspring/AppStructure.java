@@ -19,7 +19,7 @@ class AppStructure {
     private final List<BehaviorStructure> models = new ArrayList<>();
     private final String appName;
     private final String subPackage;
-    private String topPackage = "com.ociweb.apis";
+    private String topPackage = null;
 
     AppStructure(String appName, String subPackage, int port) {
         this.appName = appName;
@@ -29,6 +29,23 @@ class AppStructure {
 
     void addBehavior(BehaviorStructure model) {
         models.add(model);
+
+        String newPackage = model.getBehaviorName().packageName();
+        if (topPackage == null) {
+            topPackage = newPackage;
+        }
+        else {
+            int lastSection = 0;
+            for (int i = 0; i < Math.min(newPackage.length(), topPackage.length()); i++) {
+                if (topPackage.charAt(i) == '.') {
+                    lastSection = i;
+                }
+                if (newPackage.charAt(i) != topPackage.charAt(i)) {
+                    topPackage = topPackage.substring(0, lastSection);
+                    break;
+                }
+            }
+        }
     }
 
     void write(Filer filer, String indent) throws IOException {

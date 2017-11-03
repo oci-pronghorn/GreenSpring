@@ -1,4 +1,4 @@
-package com.ociweb.apis.inventory.controllers;
+package com.ociweb.apis.model;
 
 import java.io.Serializable;
 

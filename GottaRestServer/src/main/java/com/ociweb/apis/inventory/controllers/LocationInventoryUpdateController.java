@@ -1,5 +1,6 @@
 package com.ociweb.apis.inventory.controllers;
 
+import com.ociweb.apis.model.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
