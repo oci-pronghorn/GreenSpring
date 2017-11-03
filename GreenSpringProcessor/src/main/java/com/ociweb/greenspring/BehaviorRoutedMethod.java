@@ -3,6 +3,7 @@ package com.ociweb.greenspring;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ociweb.gl.api.HTTPRequestReader;
+import com.ociweb.gl.api.Writable;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.squareup.javapoet.*;
 import org.springframework.http.HttpStatus;
@@ -14,7 +15,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.VariableElement;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 class BehaviorRoutedMethod {
@@ -105,13 +109,20 @@ class BehaviorRoutedMethod {
                 response = mapper.readValue(channelReader, _createInventoryRequestBodyType);
             }
         });
+        if (response.getBody() != null) {
+            writable = new Writable() {
+                @Override
+                public void write(ChannelWriter channelWriter) {
+                    mapper.writeValue(channelWriter, response.getBody());
+                }
+            };
+        }
     */
     void injectDispatch(TypeSpec.Builder builder) {
         String dispatchName = getDispatchName();
         MethodSpec.Builder method = MethodSpec.methodBuilder(dispatchName)
                 .addModifiers(Modifier.PRIVATE)
                 .addParameter(HTTPRequestReader.class, "httpRequestReader")
-                .addCode("$T response = badRequest;\n", ResponseEntity.class)
                 .addCode("try {\n")
                 .returns(boolean.class);
 
@@ -142,15 +153,14 @@ class BehaviorRoutedMethod {
 
         String paramList = orderedParams.stream().map(VariableElement::getSimpleName).collect(Collectors.joining(", "));
         method.addCode(
-                "    response = service." + methodName + "(" + paramList + ");\n" +
+                "    $T response = service." + methodName + "(" + paramList + ");\n" +
+                "    $T writer = null;\n" +
+                "    channel.publishHTTPResponse(httpRequestReader, response.getStatusCodeValue(), $T.JSON, writer);\n" +
                 "}\n" +
                 "catch (Exception e) {\n" +
+                "    channel.publishHTTPResponse(httpRequestReader, badRequest.getStatusCodeValue(), HTTPContentTypeDefaults.JSON, null);\n" +
                 "}\n" +
-                "finally {\n" +
-                 "    // TODO: serialize response json\n" +
-                "    channel.publishHTTPResponse(httpRequestReader, response.getStatusCodeValue(), $T.JSON, (w)->{w.writeUTF(\"{}\");});\n" +
-                "}\n" +
-                "return true;\n", HTTPContentTypeDefaults.class);
+                "return true;\n", ResponseEntity.class, Writable.class, HTTPContentTypeDefaults.class);
 
        builder.addMethod(method.build());
     }
