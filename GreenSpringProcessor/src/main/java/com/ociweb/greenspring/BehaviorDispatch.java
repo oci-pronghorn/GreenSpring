@@ -74,7 +74,7 @@ class BehaviorDispatch {
         for (int i = 0; i < routeCount; i++) {
             BehaviorRoutedMethod method = (BehaviorRoutedMethod) methods[i];
             config.addCode("routeIds[$L] = builder.registerRoute($S);\n", i, method.getGreenRoute(route));
-            config.addCode("dispatch[$L] = ($T)$T::" + method.getDispatchName() + ";\n", i, function, behaviorName);
+            config.addCode("dispatch[$L] = ($T)$T::$L;\n", i, function, behaviorName, method.getDispatchName());
         }
 
         if (routeCount > 0) {

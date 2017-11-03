@@ -139,7 +139,7 @@ class BehaviorRoutedMethod {
                         .addModifiers(Modifier.PRIVATE, Modifier.FINAL)
                         .initializer(initializerForType(kind))
                         .build());
-                method.addCode(" = mapper.readValue(\"[]\", " + requestBodyType + ");\n");
+                method.addCode(" = mapper.readValue(\"[]\", $L);\n", requestBodyType);
             }
             else {
                 PathVariable routeParam = param.getAnnotation(PathVariable.class);

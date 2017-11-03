@@ -37,11 +37,11 @@ class AppStructure {
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(Builder.class, "builder")
                 .addComment("// TODO: figure out good class name and port")
-                .addCode("builder.enableServer(false, " + port + ");\n")
+                .addCode("builder.enableServer(false, $L);\n", port)
                 .addCode("builder.useInsecureNetClient();\n");
 
         for (BehaviorStructure model : models) {
-            declareConfiguration.addCode("$T." + model.getConfigInvocation() + "(builder);\n", model.getBehaviorName());
+            declareConfiguration.addCode("$T.$L(builder);\n", model.getBehaviorName(), model.getConfigInvocation());
         }
 
         MethodSpec.Builder declareBehavior = MethodSpec.methodBuilder("declareBehavior")
@@ -54,7 +54,7 @@ class AppStructure {
                 .addParameter(GreenRuntime.class, "runtime");
 
         for (BehaviorStructure model : models) {
-            declareBehavior.addCode("$T." + model.getBehaviorInvocation() + "(runtime);\n", model.getBehaviorName());
+            declareBehavior.addCode("$T.$L(runtime);\n", model.getBehaviorName(), model.getBehaviorInvocation());
         }
 
         this.builder
@@ -62,7 +62,7 @@ class AppStructure {
                 MethodSpec.methodBuilder("main")
                     .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                     .addParameter(String[].class, "args")
-                    .addCode("GreenRuntime.run(new $T(),args);\n", appName)
+                    .addCode("GreenRuntime.run(new $T(), args);\n", appName)
                     .build())
             .addMethod(declareConfiguration.build())
             .addMethod(declareBehavior.build())
