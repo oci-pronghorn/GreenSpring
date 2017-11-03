@@ -95,9 +95,17 @@ class BehaviorRoutedMethod {
             TypeName sub = param.typeArguments.get(0);
             return CodeBlock.of("mapper.getTypeFactory().constructCollectionType($T.class, $T.class)", ArrayList.class, sub);
         }
-        return CodeBlock.of(kind.toString() + kind.getClass());
+        return CodeBlock.of("mapper.getTypeFactory().constructType($T)", kind);
     }
-
+    /*
+        // cannot modify response nor can we throw the exception...
+        httpRequestReader.openPayloadData(new Payloadable() {
+            @Override
+            public void read(ChannelReader channelReader) {
+                response = mapper.readValue(channelReader, _createInventoryRequestBodyType);
+            }
+        });
+    */
     void injectDispatch(TypeSpec.Builder builder) {
         String dispatchName = getDispatchName();
         MethodSpec.Builder method = MethodSpec.methodBuilder(dispatchName)
