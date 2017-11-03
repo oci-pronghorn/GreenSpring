@@ -23,11 +23,11 @@ class BehaviorStructure {
     private final TypeSpec.Builder builder;
     private final BehaviorDispatch dispatch;
 
-    BehaviorStructure(RequestMapping mapping, Element element) throws ClassNotFoundException {
+    BehaviorStructure(RequestMapping mapping, Element element, String subPackage) throws ClassNotFoundException {
         Element enclosingElement = element.getEnclosingElement();
         PackageElement packageElement = (PackageElement)enclosingElement;
         this.serviceName = ClassName.get(packageElement.getQualifiedName().toString(), element.getSimpleName().toString());
-        this.behaviorName = ClassName.get(packageElement.getQualifiedName().toString(), "Green" + element.getSimpleName().toString());
+        this.behaviorName = ClassName.get(packageElement.getQualifiedName().toString() + subPackage, "Green" + element.getSimpleName().toString());
         String routeStr = mapping.value().length > 0 ? mapping.value()[0] : "/";
         String baseRoute = routeStr.substring(0, routeStr.length()-1);
         this.builder = createTypeBuilder();
@@ -53,7 +53,7 @@ class BehaviorStructure {
 
     void write(Filer filer, String indent) throws IOException {
         this.dispatch.injectRoutes(builder);
-        JavaFile.builder(this.serviceName.packageName(), builder.build())
+        JavaFile.builder(this.behaviorName.packageName(), builder.build())
                 .skipJavaLangImports(true)
                 .indent(indent)
                 .build()

@@ -19,6 +19,9 @@ public class CreateGreenSpringApp extends AbstractProcessor {
     private Filer filer;
     private Messager messager;
     private final String indent = "    ";
+    private final String appName =  "GreenSpringApp";
+    private final String subPackage =  ".green";
+    private final int port =  80;
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -32,14 +35,14 @@ public class CreateGreenSpringApp extends AbstractProcessor {
         if (annotations.isEmpty()) {
             return true;
         }
-        AppStructure app = new AppStructure();
+        AppStructure app = new AppStructure(appName, subPackage, port);
         BehaviorStructure current = null;
         for (Element element : roundEnv.getElementsAnnotatedWith(RequestMapping.class)) {
             RequestMapping mapping = element.getAnnotation(RequestMapping.class);
             if (element.getKind() == ElementKind.CLASS) {
                 current = null;
                 try {
-                    current = new BehaviorStructure(mapping, element);
+                    current = new BehaviorStructure(mapping, element, subPackage);
                     app.addBehavior(current);
                 } catch (ClassNotFoundException e) {
                     messager.printMessage(Diagnostic.Kind.ERROR, e.getLocalizedMessage(), element);

@@ -15,16 +15,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 class AppStructure {
-    private final ClassName appName = ClassName.get("com.ociweb.apis", "GreenSpringApp");
-    private final int port = 80;
-
+    private final int port;
     private final List<BehaviorStructure> models = new ArrayList<>();
-    private final TypeSpec.Builder builder;
+    private final String appName;
+    private final String subPackage;
+    private String topPackage = "com.ociweb.apis";
 
-    AppStructure() {
-        this.builder = TypeSpec.classBuilder(appName)
-                .addModifiers(Modifier.PUBLIC)
-                .addSuperinterface(GreenAppParallel.class);
+    AppStructure(String appName, String subPackage, int port) {
+        this.appName = appName;
+        this.subPackage = subPackage;
+        this.port = port;
     }
 
     void addBehavior(BehaviorStructure model) {
@@ -32,6 +32,12 @@ class AppStructure {
     }
 
     void write(Filer filer, String indent) throws IOException {
+
+        ClassName buildName = ClassName.get(topPackage, "GreenSpringApp");
+
+        TypeSpec.Builder builder = TypeSpec.classBuilder(buildName)
+                .addModifiers(Modifier.PUBLIC)
+                .addSuperinterface(GreenAppParallel.class);
 
         MethodSpec.Builder declareConfiguration = MethodSpec.methodBuilder("declareConfiguration")
                 .addModifiers(Modifier.PUBLIC)
@@ -57,18 +63,18 @@ class AppStructure {
             declareBehavior.addCode("$T.$L(runtime);\n", model.getBehaviorName(), model.getBehaviorInvocation());
         }
 
-        this.builder
+        builder
             .addMethod(
                 MethodSpec.methodBuilder("main")
                     .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                     .addParameter(String[].class, "args")
-                    .addCode("GreenRuntime.run(new $T(), args);\n", appName)
+                    .addCode("GreenRuntime.run(new $T(), args);\n", buildName)
                     .build())
             .addMethod(declareConfiguration.build())
             .addMethod(declareBehavior.build())
             .addMethod(declareParallelBehavior.build());
 
-        JavaFile.Builder java = JavaFile.builder(appName.packageName(), this.builder.build())
+        JavaFile.Builder java = JavaFile.builder(buildName.packageName(), builder.build())
                 .skipJavaLangImports(true)
                 .indent(indent);
 
