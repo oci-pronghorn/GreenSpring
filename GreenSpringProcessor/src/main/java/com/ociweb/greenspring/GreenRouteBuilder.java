@@ -46,13 +46,13 @@ class GreenRouteBuilder {
         spec.put("float", "%");
         spec.put("double", "%");
 
-        init.put("java.lang.String", " = paramToString(%d, httpRequestReader);\n");
-        init.put("byte", " = httpRequestReader.getByte(%d);\n");
-        init.put("short", " = httpRequestReader.getShort(%d);\n");
-        init.put("int", " = httpRequestReader.getInt(%d);\n");
-        init.put("long", " = httpRequestReader.getLong(%d);\n");
-        init.put("float", " = httpRequestReader.getDouble(%d);\n");
-        init.put("double", " = httpRequestReader.getDouble(%d);\n");
+        init.put("java.lang.String", "paramToString($L, httpRequestReader)");
+        init.put("byte", "httpRequestReader.getByte($L)");
+        init.put("short", "httpRequestReader.getShort($L)");
+        init.put("int", "httpRequestReader.getInt($L)");
+        init.put("long", "httpRequestReader.getLong($L)");
+        init.put("float", "httpRequestReader.getDouble($L)");
+        init.put("double", "httpRequestReader.getDouble($L)");
     }
 
     GreenRouteBuilder(ClassName serviceName, String subPackage, RequestMapping mapping, ExecutableElement element) {
@@ -109,7 +109,7 @@ class GreenRouteBuilder {
         MethodSpec.Builder constructor = MethodSpec.constructorBuilder()
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(GreenCommandChannel.class, "channel")
-                .addCode("this.channel = channel;\n");
+                .addStatement("this.channel = channel");
 
         builder.addMethod(constructor.build());
     }
@@ -120,13 +120,15 @@ class GreenRouteBuilder {
                 .addParameter(int.class, "idx")
                 .addParameter(HTTPRequestReader.class, "httpRequestReader")
                 .returns(String.class)
-                .addCode("paramBuffer.setLength(0);\nhttpRequestReader.getText(idx, paramBuffer);\nreturn paramBuffer.toString();\n")
+                .addStatement("paramBuffer.setLength(0)")
+                .addStatement("httpRequestReader.getText(idx, paramBuffer)")
+                .addStatement("return paramBuffer.toString()")
                 .build();
 
         MethodSpec setService = MethodSpec.methodBuilder("setService")
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(serviceName, "service")
-                .addCode("this.service = service;\n")
+                .addStatement("this.service = service;")
                 .build();
 
         builder
@@ -148,9 +150,12 @@ class GreenRouteBuilder {
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override.class)
                 .addParameter(ChannelReader.class, "channelReader")
-                .addCode("try {\n")
-                .addCode("    requestBody = mapper.readValue(channelReader, requestBodyType);\n")
-                .addCode("} catch ($T e) { throw new RuntimeException(e); }\n", IOException.class);
+                .beginControlFlow("try")
+                .addStatement("requestBody = mapper.readValue(channelReader, requestBodyType)")
+                .endControlFlow()
+                .beginControlFlow("catch ($T e)", IOException.class)
+                .addStatement("throw new $T(e)", RuntimeException.class)
+                .endControlFlow();
 
         builder.addMethod(method.build());
     }
@@ -160,9 +165,12 @@ class GreenRouteBuilder {
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override.class)
                 .addParameter(ChannelWriter.class, "channelWriter")
-                .addCode("try {\n")
-                .addCode("    mapper.writeValue(channelWriter, responseBody);\n")
-                .addCode("} catch ($T e) { throw new RuntimeException(e); }\n", IOException.class);
+                .beginControlFlow("try")
+                .addStatement("mapper.writeValue(channelWriter, responseBody)")
+                .endControlFlow()
+                .beginControlFlow("catch ($T e)", IOException.class)
+                .addStatement("throw new $T(e)", RuntimeException.class)
+                .endControlFlow();
 
         builder.addMethod(method.build());
     }
@@ -174,8 +182,7 @@ class GreenRouteBuilder {
                 .addParameter(HTTPRequestReader.class, "httpRequestReader")
                 .returns(boolean.class);
 
-        method.addCode(
-                "try {\n");
+        method.beginControlFlow("try");
 
         for (VariableElement param : orderedParams) {
             TypeName kind = TypeName.get(param.asType());
@@ -189,31 +196,31 @@ class GreenRouteBuilder {
                 builder.addField(FieldSpec.builder(kind, "requestBody")
                         .addModifiers(Modifier.PRIVATE)
                         .build());
-                method.addCode("    httpRequestReader.openPayloadData(this);\n");
-                method.addCode("    $T $L = requestBody;\n", kind, name);
+                method.addStatement("httpRequestReader.openPayloadData(this)");
+                method.addStatement("$T $L = requestBody", kind, name);
             }
             else {
                 PathVariable routeParam = param.getAnnotation(PathVariable.class);
                 if (routeParam != null) {
                     String key = kind.toString();
-                    method.addCode("    $T $L" + String.format(init.get(key), routedIds.get(name)), kind, name);
+                    String initializer = init.get(key);
+                    method.addStatement("$T $L = " + initializer, kind, name, routedIds.get(name));
                 }
                 else {
-                    method.addCode("    $T $L;\n", kind, name);
+                    method.addStatement("$T $L", kind, name);
                 }
             }
         }
 
         String paramList = orderedParams.stream().map(VariableElement::getSimpleName).collect(Collectors.joining(", "));
-        method.addCode(
-                "    $T response = service." + methodName + "(" + paramList + ");\n" +
-                "    this.responseBody = response.getBody();\n" +
-                "    channel.publishHTTPResponse(httpRequestReader, response.getStatusCodeValue(), $T.JSON, this);\n" +
-                "}\n" +
-                "catch (Throwable e) {\n" +
-                "    channel.publishHTTPResponse(httpRequestReader, $T.BAD_REQUEST.value());\n" +
-                "}\n" +
-                "return true;\n", responseName, HTTPContentTypeDefaults.class, HttpStatus.class);
+        method.addStatement("$T response = service." + methodName + "(" + paramList + ")", responseName);
+        method.addStatement("this.responseBody = response.getBody()");
+        method.addStatement("channel.publishHTTPResponse(httpRequestReader, response.getStatusCodeValue(), $T.JSON, this)", HTTPContentTypeDefaults.class);
+        method.endControlFlow();
+        method.beginControlFlow("catch (Throwable e)");
+        method.addStatement("channel.publishHTTPResponse(httpRequestReader, $T.BAD_REQUEST.value())", HttpStatus.class);
+        method.endControlFlow();
+        method.addStatement("return true");
 
         builder.addMethod(method.build());
     }
@@ -250,6 +257,6 @@ class GreenRouteBuilder {
             s = p + 1;
         } while (s < route.length());
 
-        return String.format("%s%s", base, transformed.toString());
+        return base + transformed.toString();
     }
 }
