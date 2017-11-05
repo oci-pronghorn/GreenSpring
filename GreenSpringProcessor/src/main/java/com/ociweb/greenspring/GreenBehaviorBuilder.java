@@ -88,11 +88,11 @@ class GreenBehaviorBuilder {
                 .addParameter(GreenRuntime.class, "runtime");
 
         if (sharedChannel) {
-            constructor.addCode("this.channel = runtime.newCommandChannel(NET_REQUESTER);\n");
+            constructor.addStatement("this.channel = runtime.newCommandChannel(NET_REQUESTER)");
         }
         else {
-            constructor.addCode("this.channels = new $T[$L];\n", GreenCommandChannel.class, routes.size());
-            constructor.addCode("for (int i = 0; i <$L; i++) this.channels[i] = runtime.newCommandChannel(NET_REQUESTER);\n", routes.size());
+            constructor.addStatement("this.channels = new $T[$L]", GreenCommandChannel.class, routes.size());
+            constructor.addStatement("for (int i = 0; i <$L; i++) this.channels[i] = runtime.newCommandChannel(NET_REQUESTER)", routes.size());
         }
 
         builder.addMethod(constructor.build());
@@ -114,12 +114,12 @@ class GreenBehaviorBuilder {
                 .addParameter(Builder.class, "builder");
 
         for (int i = 0; i < routes.size(); i++) {
-            config.addCode("routeIds[$L] = builder.registerRoute($S);\n", i, routes.get(i).getGreenRoute(baseRoute));
+            config.addStatement("routeIds[$L] = builder.registerRoute($S)", i, routes.get(i).getGreenRoute(baseRoute));
         }
 
         if (sharedChannel) {
             if (routes.size() > 0) {
-                config.addCode("routeOffset = routeIds[0];\n");
+                config.addStatement("routeOffset = routeIds[0]");
             }
         }
 
@@ -136,8 +136,8 @@ class GreenBehaviorBuilder {
         MethodSpec.Builder behavior = MethodSpec.methodBuilder(getBehaviorInvocation())
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                 .addParameter(GreenRuntime.class, "runtime")
-                .addCode("$T green = new $T(runtime);\n", behaviorName, behaviorName)
-                .addCode("green.doRegister(runtime);\n");
+                .addStatement("$T green = new $T(runtime)", behaviorName, behaviorName)
+                .addStatement("green.doRegister(runtime)");
 
         MethodSpec.Builder doRegister = MethodSpec.methodBuilder("doRegister")
                 .addModifiers(Modifier.PRIVATE)
@@ -146,19 +146,19 @@ class GreenBehaviorBuilder {
         for (int i = 0; i < routes.size(); i++) {
             GreenRouteBuilder route = routes.get(i);
             if (sharedChannel) {
-                doRegister.addCode("routes[$L] = new $T(channel);\n", i, route.getBehaviorName());
+                doRegister.addStatement("routes[$L] = new $T(channel)", i, route.getBehaviorName());
             } else {
-                doRegister.addCode("routes[$L] = new $T(channels[$L]);\n", i, route.getBehaviorName(), i);
-                doRegister.addCode("runtime.registerListener(routes[$L]).includeRoutes(new int[] { routeIds[$L] });\n", i, i);
+                doRegister.addStatement("routes[$L] = new $T(channels[$L])", i, route.getBehaviorName(), i);
+                doRegister.addStatement("runtime.registerListener(routes[$L]).includeRoutes(new int[] { routeIds[$L] })", i, i);
             }
         }
 
         if (sharedChannel) {
             if (routes.size() > 0) {
-                doRegister.addCode("runtime.registerListener(this).includeRoutes(routeIds);\n");
+                doRegister.addStatement("runtime.registerListener(this).includeRoutes(routeIds)");
             }
             else {
-                doRegister.addCode("runtime.registerListener(this);\n");
+                doRegister.addStatement("runtime.registerListener(this)");
             }
         }
 
@@ -181,18 +181,18 @@ class GreenBehaviorBuilder {
                 .addAnnotation(Override.class);
 
         if (routes.size() == 0) {
-            startup.addCode("service = new $T();\n", serviceName);
+            startup.addStatement("service = new $T()", serviceName);
         }
         else if (sharedService) {
-            startup.addCode("$T service = new $T();\n", serviceName, serviceName);
+            startup.addStatement("$T service = new $T()", serviceName, serviceName);
         }
 
         for (int i = 0; i < routes.size(); i++) {
             GreenRouteBuilder route = routes.get(i);
             if (sharedService) {
-                startup.addCode("(($T)routes[$L]).setService(service);\n", route.getBehaviorName(), i);
+                startup.addStatement("(($T)routes[$L]).setService(service)", route.getBehaviorName(), i);
             } else {
-                startup.addCode("(($T)routes[$L]).setService(new $T());\n", route.getBehaviorName(), i, serviceName);
+                startup.addStatement("(($T)routes[$L]).setService(new $T())", route.getBehaviorName(), i, serviceName);
             }
         }
 
@@ -205,9 +205,9 @@ class GreenBehaviorBuilder {
             .addAnnotation(Override.class)
             .addParameter(HTTPRequestReader.class, "httpRequestReader")
             .returns(boolean.class)
-            .addCode(routes.isEmpty() || !sharedChannel
-                    ? "return true;\n"
-                    : "return (routes[httpRequestReader.getRouteId() - routeOffset]).restRequest(httpRequestReader);\n");
+            .addStatement(routes.isEmpty() || !sharedChannel
+                    ? "return true"
+                    : "return (routes[httpRequestReader.getRouteId() - routeOffset]).restRequest(httpRequestReader)");
 
         builder.addMethod(restRequest.build());
     }
