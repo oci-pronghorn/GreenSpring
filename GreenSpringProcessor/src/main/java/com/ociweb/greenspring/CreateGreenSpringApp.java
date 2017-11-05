@@ -22,6 +22,8 @@ public class CreateGreenSpringApp extends AbstractProcessor {
     private final String appName =  "GreenSpringApp";
     private final String subPackage =  "";
     private final int port =  80;
+    private final boolean shareChannel =  true;
+    private final boolean shareService =  true;
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -42,7 +44,7 @@ public class CreateGreenSpringApp extends AbstractProcessor {
             if (element.getKind() == ElementKind.CLASS) {
                 current = null;
                 try {
-                    current = new GreenBehaviorBuilder(mapping, element, subPackage, true, true);
+                    current = new GreenBehaviorBuilder(mapping, element, subPackage, shareChannel, shareService);
                     app.addBehavior(current);
                 } catch (ClassNotFoundException e) {
                     messager.printMessage(Diagnostic.Kind.ERROR, e.getLocalizedMessage(), element);
