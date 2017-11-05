@@ -61,12 +61,11 @@ class GreenSpringAppBuilder {
         MethodSpec.Builder declareConfiguration = MethodSpec.methodBuilder("declareConfiguration")
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(Builder.class, "builder")
-                .addComment("// TODO: figure out good class name and port")
-                .addCode("builder.enableServer(false, $L);\n", port)
-                .addCode("builder.useInsecureNetClient();\n");
+                .addStatement("builder.enableServer(false, $L)", port)
+                .addStatement("builder.useInsecureNetClient()");
 
         for (GreenBehaviorBuilder model : models) {
-            declareConfiguration.addCode("$T.$L(builder);\n", model.getBehaviorName(), model.getConfigInvocation());
+            declareConfiguration.addStatement("$T.$L(builder)", model.getBehaviorName(), model.getConfigInvocation());
         }
 
         MethodSpec.Builder declareBehavior = MethodSpec.methodBuilder("declareBehavior")
@@ -80,10 +79,10 @@ class GreenSpringAppBuilder {
 
         for (GreenBehaviorBuilder model : models) {
             if (parallelBehaviors) {
-                declareParallelBehavior.addCode("$T.$L(runtime);\n", model.getBehaviorName(), model.getBehaviorInvocation());
+                declareParallelBehavior.addStatement("$T.$L(runtime)", model.getBehaviorName(), model.getBehaviorInvocation());
             }
             else {
-                declareBehavior.addCode("$T.$L(runtime);\n", model.getBehaviorName(), model.getBehaviorInvocation());
+                declareBehavior.addStatement("$T.$L(runtime)", model.getBehaviorName(), model.getBehaviorInvocation());
             }
         }
 
@@ -92,7 +91,7 @@ class GreenSpringAppBuilder {
                 MethodSpec.methodBuilder("main")
                     .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                     .addParameter(String[].class, "args")
-                    .addCode("GreenRuntime.run(new $T(), args);\n", buildName)
+                    .addStatement("GreenRuntime.run(new $T(), args)", buildName)
                     .build())
             .addMethod(declareConfiguration.build())
             .addMethod(declareBehavior.build())
