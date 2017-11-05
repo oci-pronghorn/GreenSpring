@@ -59,7 +59,10 @@ class GreenRouteBuilder {
         this.serviceName = serviceName;
         this.route = mapping.value().length > 0 ? mapping.value()[0] : "";
         this.methodName = element.getSimpleName().toString();
-        this.behaviorName = ClassName.get(serviceName.packageName() + subPackage + ".routes", serviceName.simpleName() + methodName);
+
+        String packageName = serviceName.packageName() + subPackage + ".routes";
+        String className = "Green" + serviceName.simpleName() + methodName.substring(0, 1).toUpperCase() + methodName.substring(1);
+        this.behaviorName = ClassName.get(packageName, className);
 
         int idx = 0;
         List<? extends VariableElement> parameters = element.getParameters();
@@ -145,7 +148,10 @@ class GreenRouteBuilder {
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override.class)
                 .addParameter(ChannelReader.class, "channelReader")
-                .addCode("//requestBody = mapper.readValue(channelReader, requestBodyType);\n");
+                .addCode("try {\n")
+                .addCode("    requestBody = mapper.readValue(channelReader, requestBodyType);\n")
+                .addCode("} catch ($T e) { throw new RuntimeException(e); }\n", IOException.class);
+
         builder.addMethod(method.build());
     }
 
@@ -154,7 +160,9 @@ class GreenRouteBuilder {
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override.class)
                 .addParameter(ChannelWriter.class, "channelWriter")
-                .addCode("//mapper.writeValue(channelWriter, responseBody);\n");
+                .addCode("try {\n")
+                .addCode("    mapper.writeValue(channelWriter, responseBody);\n")
+                .addCode("} catch ($T e) { throw new RuntimeException(e); }\n", IOException.class);
 
         builder.addMethod(method.build());
     }
@@ -202,7 +210,7 @@ class GreenRouteBuilder {
                 "    this.responseBody = response.getBody();\n" +
                 "    channel.publishHTTPResponse(httpRequestReader, response.getStatusCodeValue(), $T.JSON, this);\n" +
                 "}\n" +
-                "catch (Exception e) {\n" +
+                "catch (Throwable e) {\n" +
                 "    channel.publishHTTPResponse(httpRequestReader, $T.BAD_REQUEST.value());\n" +
                 "}\n" +
                 "return true;\n", responseName, HTTPContentTypeDefaults.class, HttpStatus.class);

@@ -22,6 +22,7 @@ public class CreateGreenSpringApp extends AbstractProcessor {
     private final String appName =  "GreenSpringApp";
     private final String subPackage =  "";
     private final int port =  80;
+    private final boolean parallelBehaviors =  false;
     private final boolean shareChannel =  true;
     private final boolean shareService =  true;
 
@@ -37,7 +38,7 @@ public class CreateGreenSpringApp extends AbstractProcessor {
         if (annotations.isEmpty()) {
             return true;
         }
-        GreenSpringAppBuilder app = new GreenSpringAppBuilder(appName, subPackage, port);
+        GreenSpringAppBuilder app = new GreenSpringAppBuilder(appName, subPackage, port, parallelBehaviors);
         GreenBehaviorBuilder current = null;
         for (Element element : roundEnv.getElementsAnnotatedWith(RequestMapping.class)) {
             RequestMapping mapping = element.getAnnotation(RequestMapping.class);
