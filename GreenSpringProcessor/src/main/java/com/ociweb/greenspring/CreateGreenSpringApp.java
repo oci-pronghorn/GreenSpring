@@ -12,19 +12,14 @@ import javax.tools.Diagnostic;
 import java.io.IOException;
 import java.util.Set;
 
+
 @SupportedAnnotationTypes("org.springframework.web.bind.annotation.*")
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 //@AutoService(CreateGreenSpringApp.class) - Google thing to produce meta file
 public class CreateGreenSpringApp extends AbstractProcessor {
     private Filer filer;
     private Messager messager;
-    private final String indent = "    ";
-    private final String appName =  "GreenSpringApp";
-    private final String subPackage =  "";
-    private final int port =  80;
-    private final boolean parallelBehaviors =  false;
-    private final boolean shareChannel =  true;
-    private final GreenServiceScope serviceScope =  GreenServiceScope.app;
+    private final CreateGreenSpringAppConfig config = new CreateGreenSpringAppConfig();
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -38,14 +33,14 @@ public class CreateGreenSpringApp extends AbstractProcessor {
         if (annotations.isEmpty()) {
             return true;
         }
-        GreenSpringAppBuilder app = new GreenSpringAppBuilder(appName, subPackage, port, parallelBehaviors);
+        GreenSpringAppBuilder app = new GreenSpringAppBuilder(config.getAppName(), config.getSubPackage(), config.getPort(), config.isParallelBehaviors());
         GreenBehaviorBuilder current = null;
         for (Element element : roundEnv.getElementsAnnotatedWith(RequestMapping.class)) {
             RequestMapping mapping = element.getAnnotation(RequestMapping.class);
             if (element.getKind() == ElementKind.CLASS) {
                 current = null;
                 try {
-                    current = new GreenBehaviorBuilder(mapping, element, subPackage, shareChannel, serviceScope);
+                    current = new GreenBehaviorBuilder(mapping, element, config.getSubPackage(), config.isParallelRoutes(), config.getServiceScope());
                     app.addBehavior(current);
                 } catch (ClassNotFoundException e) {
                     messager.printMessage(Diagnostic.Kind.ERROR, e.getLocalizedMessage(), element);
@@ -55,7 +50,7 @@ public class CreateGreenSpringApp extends AbstractProcessor {
             }
         }
         try {
-            app.write(filer, indent);
+            app.write(filer, config.getIndent());
         } catch (IOException e) {
             messager.printMessage(Diagnostic.Kind.ERROR, e.getLocalizedMessage());
         }

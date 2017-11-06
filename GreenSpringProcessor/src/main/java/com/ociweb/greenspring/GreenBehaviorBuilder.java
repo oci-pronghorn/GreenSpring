@@ -17,19 +17,19 @@ class GreenBehaviorBuilder {
     private final ClassName serviceName;
     private final ClassName behaviorName;
     private final String subPackage;
-    private final boolean sharedChannel;
+    private final boolean parallelRoutes;
     private final GreenServiceScope serviceScope;
     private final String baseRoute;
     private final TypeSpec.Builder builder;
     private final List<GreenRouteBuilder> routes = new ArrayList<>();
 
-    GreenBehaviorBuilder(RequestMapping mapping, Element element, String subPackage, boolean sharedChannel, GreenServiceScope serviceScope) throws ClassNotFoundException {
+    GreenBehaviorBuilder(RequestMapping mapping, Element element, String subPackage, boolean parallelRoutes, GreenServiceScope serviceScope) throws ClassNotFoundException {
         this.subPackage = subPackage;
         Element enclosingElement = element.getEnclosingElement();
         PackageElement packageElement = (PackageElement)enclosingElement;
         this.serviceName = ClassName.get(packageElement.getQualifiedName().toString(), element.getSimpleName().toString());
         this.behaviorName = ClassName.get(packageElement.getQualifiedName().toString() + subPackage, "Green" + element.getSimpleName().toString());
-        this.sharedChannel = sharedChannel;
+        this.parallelRoutes = parallelRoutes;
         this.serviceScope = serviceScope;
         String routeStr = mapping.value().length > 0 ? mapping.value()[0] : "/";
         this.baseRoute = routeStr.substring(0, routeStr.length()-1);
@@ -80,14 +80,14 @@ class GreenBehaviorBuilder {
                 .addModifiers(Modifier.PRIVATE)
                 .addParameter(GreenRuntime.class, "runtime");
 
-        if (sharedChannel) {
-            builder.addField(GreenCommandChannel.class, "channel", Modifier.PRIVATE, Modifier.FINAL);
-            constructor.addStatement("this.channel = runtime.newCommandChannel(NET_REQUESTER)");
-        }
-        else {
+        if (parallelRoutes) {
             builder.addField(GreenCommandChannel[].class, "channels", Modifier.PRIVATE, Modifier.FINAL);
             constructor.addStatement("this.channels = new $T[$L]", GreenCommandChannel.class, routes.size());
             constructor.addStatement("for (int i = 0; i <$L; i++) this.channels[i] = runtime.newCommandChannel(NET_REQUESTER)", routes.size());
+        }
+        else {
+            builder.addField(GreenCommandChannel.class, "channel", Modifier.PRIVATE, Modifier.FINAL);
+            constructor.addStatement("this.channel = runtime.newCommandChannel(NET_REQUESTER)");
         }
 
         builder.addMethod(constructor.build());
@@ -100,7 +100,7 @@ class GreenBehaviorBuilder {
                     .build());
         }
 
-        if (sharedChannel && !routes.isEmpty()) {
+        if (!parallelRoutes && !routes.isEmpty()) {
             builder.addField(int.class, "routeOffset", Modifier.PRIVATE, Modifier.STATIC);
         }
 
@@ -112,7 +112,7 @@ class GreenBehaviorBuilder {
             config.addStatement("routeIds[$L] = builder.registerRoute($S)", i, routes.get(i).getGreenRoute(baseRoute));
         }
 
-        if (sharedChannel) {
+        if (!parallelRoutes) {
             if (!routes.isEmpty()) {
                 config.addStatement("routeOffset = routeIds[0]");
             }
@@ -140,15 +140,15 @@ class GreenBehaviorBuilder {
 
         for (int i = 0; i < routes.size(); i++) {
             GreenRouteBuilder route = routes.get(i);
-            if (sharedChannel) {
-                doRegister.addStatement("routes[$L] = new $T(channel)", i, route.getBehaviorName());
-            } else {
+            if (parallelRoutes) {
                 doRegister.addStatement("routes[$L] = new $T(channels[$L])", i, route.getBehaviorName(), i);
                 doRegister.addStatement("runtime.registerListener(routes[$L]).includeRoutes(new int[] { routeIds[$L] })", i, i);
+            } else {
+                doRegister.addStatement("routes[$L] = new $T(channel)", i, route.getBehaviorName());
             }
         }
 
-        if (sharedChannel) {
+        if (!parallelRoutes) {
             if (routes.size() > 0) {
                 doRegister.addStatement("runtime.registerListener(this).includeRoutes(routeIds)");
             }
@@ -156,13 +156,15 @@ class GreenBehaviorBuilder {
                 doRegister.addStatement("runtime.registerListener(this)");
             }
         }
+        else {
+            doRegister.addStatement("runtime.addStartupListener(this)");
+        }
 
         builder.addMethod(behavior.build());
         builder.addMethod(doRegister.build());
     }
 
     private void buildStartup() {
-
         MethodSpec.Builder startup = MethodSpec.methodBuilder("startup")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override.class);
@@ -198,7 +200,7 @@ class GreenBehaviorBuilder {
             .addAnnotation(Override.class)
             .addParameter(HTTPRequestReader.class, "httpRequestReader")
             .returns(boolean.class)
-            .addStatement(routes.isEmpty() || !sharedChannel
+            .addStatement(routes.isEmpty() || parallelRoutes
                     ? "return true"
                     : "return (routes[httpRequestReader.getRouteId() - routeOffset]).restRequest(httpRequestReader)");
 
