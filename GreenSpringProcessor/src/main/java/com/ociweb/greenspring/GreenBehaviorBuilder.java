@@ -80,12 +80,7 @@ class GreenBehaviorBuilder {
                 .addModifiers(Modifier.PRIVATE)
                 .addParameter(GreenRuntime.class, "runtime");
 
-        if (parallelRoutes) {
-            builder.addField(GreenCommandChannel[].class, "channels", Modifier.PRIVATE, Modifier.FINAL);
-            constructor.addStatement("this.channels = new $T[$L]", GreenCommandChannel.class, routes.size());
-            constructor.addStatement("for (int i = 0; i <$L; i++) this.channels[i] = runtime.newCommandChannel(NET_REQUESTER)", routes.size());
-        }
-        else {
+        if (!parallelRoutes) {
             builder.addField(GreenCommandChannel.class, "channel", Modifier.PRIVATE, Modifier.FINAL);
             constructor.addStatement("this.channel = runtime.newCommandChannel(NET_REQUESTER)");
         }
@@ -141,7 +136,7 @@ class GreenBehaviorBuilder {
         for (int i = 0; i < routes.size(); i++) {
             GreenRouteBuilder route = routes.get(i);
             if (parallelRoutes) {
-                doRegister.addStatement("routes[$L] = new $T(channels[$L])", i, route.getBehaviorName(), i);
+                doRegister.addStatement("routes[$L] = new $T(runtime.newCommandChannel(NET_REQUESTER))", i, route.getBehaviorName());
                 doRegister.addStatement("runtime.registerListener(routes[$L]).includeRoutes(new int[] { routeIds[$L] })", i, i);
             } else {
                 doRegister.addStatement("routes[$L] = new $T(channel)", i, route.getBehaviorName());
