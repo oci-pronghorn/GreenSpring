@@ -18,19 +18,19 @@ class GreenBehaviorBuilder {
     private final ClassName behaviorName;
     private final String subPackage;
     private final boolean sharedChannel;
-    private final boolean sharedService;
+    private final GreenServiceScope serviceScope;
     private final String baseRoute;
     private final TypeSpec.Builder builder;
     private final List<GreenRouteBuilder> routes = new ArrayList<>();
 
-    GreenBehaviorBuilder(RequestMapping mapping, Element element, String subPackage, boolean sharedChannel, boolean sharedService) throws ClassNotFoundException {
+    GreenBehaviorBuilder(RequestMapping mapping, Element element, String subPackage, boolean sharedChannel, GreenServiceScope serviceScope) throws ClassNotFoundException {
         this.subPackage = subPackage;
         Element enclosingElement = element.getEnclosingElement();
         PackageElement packageElement = (PackageElement)enclosingElement;
         this.serviceName = ClassName.get(packageElement.getQualifiedName().toString(), element.getSimpleName().toString());
         this.behaviorName = ClassName.get(packageElement.getQualifiedName().toString() + subPackage, "Green" + element.getSimpleName().toString());
         this.sharedChannel = sharedChannel;
-        this.sharedService = sharedService;
+        this.serviceScope = serviceScope;
         String routeStr = mapping.value().length > 0 ? mapping.value()[0] : "/";
         this.baseRoute = routeStr.substring(0, routeStr.length()-1);
 
@@ -76,21 +76,16 @@ class GreenBehaviorBuilder {
     }
 
     private void buildConstructor() {
-        if (sharedChannel) {
-            builder.addField(GreenCommandChannel.class, "channel", Modifier.PRIVATE, Modifier.FINAL);
-        }
-        else {
-            builder.addField(GreenCommandChannel[].class, "channels", Modifier.PRIVATE, Modifier.FINAL);
-        }
-
         MethodSpec.Builder constructor = MethodSpec.constructorBuilder()
                 .addModifiers(Modifier.PRIVATE)
                 .addParameter(GreenRuntime.class, "runtime");
 
         if (sharedChannel) {
+            builder.addField(GreenCommandChannel.class, "channel", Modifier.PRIVATE, Modifier.FINAL);
             constructor.addStatement("this.channel = runtime.newCommandChannel(NET_REQUESTER)");
         }
         else {
+            builder.addField(GreenCommandChannel[].class, "channels", Modifier.PRIVATE, Modifier.FINAL);
             constructor.addStatement("this.channels = new $T[$L]", GreenCommandChannel.class, routes.size());
             constructor.addStatement("for (int i = 0; i <$L; i++) this.channels[i] = runtime.newCommandChannel(NET_REQUESTER)", routes.size());
         }
@@ -99,13 +94,13 @@ class GreenBehaviorBuilder {
     }
 
     private void buildRegisterRoutes() {
-        if (routes.size() > 0) {
+        if (!routes.isEmpty()) {
             builder.addField(FieldSpec.builder(int[].class, "routeIds", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
                     .initializer("new $T[$L]", int.class, routes.size())
                     .build());
         }
 
-        if (sharedChannel && routes.size() > 0) {
+        if (sharedChannel && !routes.isEmpty()) {
             builder.addField(int.class, "routeOffset", Modifier.PRIVATE, Modifier.STATIC);
         }
 
@@ -118,7 +113,7 @@ class GreenBehaviorBuilder {
         }
 
         if (sharedChannel) {
-            if (routes.size() > 0) {
+            if (!routes.isEmpty()) {
                 config.addStatement("routeOffset = routeIds[0]");
             }
         }
@@ -127,7 +122,7 @@ class GreenBehaviorBuilder {
     }
 
     private void buildRegisterBehaviors() {
-        if (routes.size() > 0) {
+        if (!routes.isEmpty()) {
             builder.addField(FieldSpec.builder(RestListener[].class, "routes", Modifier.PRIVATE)
                     .initializer("new $T[$L]", RestListener.class, routes.size())
                     .build());
@@ -167,29 +162,27 @@ class GreenBehaviorBuilder {
     }
 
     private void buildStartup() {
-        if (routes.size() == 0) {
-            builder.addField(FieldSpec.builder(RestListener[].class, "routes", Modifier.PRIVATE, Modifier.FINAL)
-                .initializer("new $T[$L]", RestListener.class, routes.size())
-                .build());
-
-            builder.addField(FieldSpec.builder(serviceName, "service", Modifier.PRIVATE)
-                    .build());
-        }
 
         MethodSpec.Builder startup = MethodSpec.methodBuilder("startup")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override.class);
 
-        if (routes.size() == 0) {
+        boolean serviceAsMember = true;
+        if (serviceScope == GreenServiceScope.app) {
+            builder.addField(serviceName, "service", Modifier.PRIVATE, Modifier.STATIC);
+            startup.addStatement("if (service != null) service = new $T()", serviceName);
+        }
+        else if (serviceScope == GreenServiceScope.behavior || routes.isEmpty()) {
+            builder.addField(serviceName, "service", Modifier.PRIVATE);
             startup.addStatement("service = new $T()", serviceName);
         }
-        else if (sharedService) {
-            startup.addStatement("$T service = new $T()", serviceName, serviceName);
+        else {
+            serviceAsMember = false;
         }
 
         for (int i = 0; i < routes.size(); i++) {
             GreenRouteBuilder route = routes.get(i);
-            if (sharedService) {
+            if (serviceAsMember) {
                 startup.addStatement("(($T)routes[$L]).setService(service)", route.getBehaviorName(), i);
             } else {
                 startup.addStatement("(($T)routes[$L]).setService(new $T())", route.getBehaviorName(), i, serviceName);
