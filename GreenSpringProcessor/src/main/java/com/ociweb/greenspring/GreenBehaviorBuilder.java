@@ -1,6 +1,7 @@
 package com.ociweb.greenspring;
 
 import com.ociweb.gl.api.*;
+import com.ociweb.greenspring.annotations.GreenParallelism;
 import com.squareup.javapoet.*;
 import org.springframework.web.bind.annotation.RequestMapping;
 
@@ -17,22 +18,34 @@ class GreenBehaviorBuilder {
     private final ClassName serviceName;
     private final ClassName behaviorName;
     private final String subPackage;
+    public final boolean parallelBehavior;
     private final boolean parallelRoutes;
     private final GreenServiceScope serviceScope;
     private final String baseRoute;
     private final TypeSpec.Builder builder;
     private final List<GreenRouteBuilder> routes = new ArrayList<>();
 
-    GreenBehaviorBuilder(RequestMapping mapping, Element element, String subPackage, boolean parallelRoutes, GreenServiceScope serviceScope) throws ClassNotFoundException {
+    GreenBehaviorBuilder(RequestMapping mapping, Element element, String subPackage) throws ClassNotFoundException {
         this.subPackage = subPackage;
         Element enclosingElement = element.getEnclosingElement();
         PackageElement packageElement = (PackageElement)enclosingElement;
         this.serviceName = ClassName.get(packageElement.getQualifiedName().toString(), element.getSimpleName().toString());
         this.behaviorName = ClassName.get(packageElement.getQualifiedName().toString() + subPackage, "Green" + element.getSimpleName().toString());
-        this.parallelRoutes = parallelRoutes;
-        this.serviceScope = serviceScope;
+
         String routeStr = mapping.value().length > 0 ? mapping.value()[0] : "/";
         this.baseRoute = routeStr.substring(0, routeStr.length()-1);
+
+        GreenParallelism paralellism = element.getAnnotation(GreenParallelism.class);
+        if (paralellism != null) {
+            this.parallelBehavior = paralellism.parallelBehavior();
+            this.parallelRoutes = paralellism.parallelRoutes();
+            this.serviceScope = paralellism.serviceScope();
+        }
+        else {
+            this.parallelBehavior = false;
+            this.parallelRoutes = false;
+            this.serviceScope = GreenServiceScope.behavior;
+        }
 
         this.builder = TypeSpec.classBuilder(behaviorName)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)

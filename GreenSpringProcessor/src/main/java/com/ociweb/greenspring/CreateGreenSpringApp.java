@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.util.Set;
 
 
-@SupportedAnnotationTypes("org.springframework.web.bind.annotation.*")
+@SupportedAnnotationTypes({"org.springframework.web.bind.annotation.*", "com.ociweb.greenspring.annotations.*"})
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 //@AutoService(CreateGreenSpringApp.class) - Google thing to produce meta file
 public class CreateGreenSpringApp extends AbstractProcessor {
@@ -33,14 +33,14 @@ public class CreateGreenSpringApp extends AbstractProcessor {
         if (annotations.isEmpty()) {
             return true;
         }
-        GreenSpringAppBuilder app = new GreenSpringAppBuilder(config.getAppName(), config.getSubPackage(), config.getPort(), config.isParallelBehaviors());
+        GreenSpringAppBuilder app = new GreenSpringAppBuilder(config.getAppName(), config.getSubPackage(), config.getPort());
         GreenBehaviorBuilder current = null;
         for (Element element : roundEnv.getElementsAnnotatedWith(RequestMapping.class)) {
             RequestMapping mapping = element.getAnnotation(RequestMapping.class);
             if (element.getKind() == ElementKind.CLASS) {
                 current = null;
                 try {
-                    current = new GreenBehaviorBuilder(mapping, element, config.getSubPackage(), config.isParallelRoutes(), config.getServiceScope());
+                    current = new GreenBehaviorBuilder(mapping, element, config.getSubPackage());
                     app.addBehavior(current);
                 } catch (ClassNotFoundException e) {
                     messager.printMessage(Diagnostic.Kind.ERROR, e.getLocalizedMessage(), element);

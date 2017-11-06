@@ -16,17 +16,15 @@ import java.util.List;
 
 class GreenSpringAppBuilder {
     private final int port;
-    private final boolean parallelBehaviors;
     private final List<GreenBehaviorBuilder> models = new ArrayList<>();
     private final String appName;
     private final String subPackage;
     private String topPackage = null;
 
-    GreenSpringAppBuilder(String appName, String subPackage, int port, boolean parallelBehaviors) {
+    GreenSpringAppBuilder(String appName, String subPackage, int port) {
         this.appName = appName;
         this.subPackage = subPackage;
         this.port = port;
-        this.parallelBehaviors = parallelBehaviors;
     }
 
     void addBehavior(GreenBehaviorBuilder model) {
@@ -78,7 +76,7 @@ class GreenSpringAppBuilder {
                 .addParameter(GreenRuntime.class, "runtime");
 
         for (GreenBehaviorBuilder model : models) {
-            if (parallelBehaviors) {
+            if (model.parallelBehavior) {
                 declareParallelBehavior.addStatement("$T.$L(runtime)", model.getBehaviorName(), model.getBehaviorInvocation());
             }
             else {

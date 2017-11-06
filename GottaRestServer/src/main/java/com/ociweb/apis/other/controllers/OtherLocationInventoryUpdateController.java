@@ -1,6 +1,8 @@
 package com.ociweb.apis.other.controllers;
 
 import com.ociweb.apis.model.*;
+import com.ociweb.greenspring.GreenServiceScope;
+import com.ociweb.greenspring.annotations.GreenParallelism;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +12,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping(value = "/otherinventory/")
+@GreenParallelism(parallelBehavior = true, parallelRoutes = true, serviceScope = GreenServiceScope.route)
 public class OtherLocationInventoryUpdateController extends BaseController {
 	@RequestMapping(value = "/{orgCode}/{feedType}", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<Response> createInventory(@RequestBody List<InventoryStoreMulti> inventorydata,
