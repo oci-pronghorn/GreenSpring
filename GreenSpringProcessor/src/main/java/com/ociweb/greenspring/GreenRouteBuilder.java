@@ -3,6 +3,7 @@ package com.ociweb.greenspring;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ociweb.gl.api.*;
+import com.ociweb.greenspring.annotation.CreateGreenSpringAppConfig;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.ChannelWriter;
@@ -57,7 +58,7 @@ class GreenRouteBuilder {
 
     GreenRouteBuilder(ClassName serviceName, String subPackage, RequestMapping mapping, ExecutableElement element) {
         this.serviceName = serviceName;
-        this.route = mapping.value().length > 0 ? mapping.value()[0] : "";
+        this.route = CreateGreenSpringAppConfig.normalizedRoute(mapping);
         this.methodName = element.getSimpleName().toString();
 
         String packageName = serviceName.packageName() + subPackage + ".routes";
@@ -237,6 +238,7 @@ class GreenRouteBuilder {
     String getGreenRoute(String base) {
         int s = 1;
         StringBuilder transformed = new StringBuilder();
+        transformed.append(base);
         do {
             int p = route.indexOf("/", s);
             if (p == -1) {
@@ -257,6 +259,6 @@ class GreenRouteBuilder {
             s = p + 1;
         } while (s < route.length());
 
-        return base + transformed.toString();
+        return transformed.toString();
     }
 }

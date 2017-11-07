@@ -1,6 +1,7 @@
 package com.ociweb.greenspring;
 
 import com.ociweb.gl.api.*;
+import com.ociweb.greenspring.annotation.CreateGreenSpringAppConfig;
 import com.ociweb.greenspring.annotation.GreenParallelism;
 import com.ociweb.greenspring.annotation.GreenServiceScope;
 import com.squareup.javapoet.*;
@@ -32,9 +33,7 @@ class GreenBehaviorBuilder {
         PackageElement packageElement = (PackageElement)enclosingElement;
         this.serviceName = ClassName.get(packageElement.getQualifiedName().toString(), element.getSimpleName().toString());
         this.behaviorName = ClassName.get(packageElement.getQualifiedName().toString() + subPackage, "Green" + element.getSimpleName().toString());
-
-        String routeStr = mapping.value().length > 0 ? mapping.value()[0] : "/";
-        this.baseRoute = routeStr.substring(0, routeStr.length()-1);
+        this.baseRoute = CreateGreenSpringAppConfig.normalizedRoute(mapping);
 
         GreenParallelism paralellism = element.getAnnotation(GreenParallelism.class);
         if (paralellism != null) {
