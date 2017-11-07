@@ -1,4 +1,4 @@
-package com.ociweb.greenspring.annotations;
+package com.ociweb.greenspring.annotation;
 
 public class GreenServiceScope {
     public static final int app = 0;

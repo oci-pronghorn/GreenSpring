@@ -1,5 +1,6 @@
 package com.ociweb.greenspring;
 
+import com.ociweb.greenspring.annotation.CreateGreenSpringAppConfig;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import javax.annotation.processing.*;
@@ -13,7 +14,7 @@ import java.io.IOException;
 import java.util.Set;
 
 
-@SupportedAnnotationTypes({"org.springframework.web.bind.annotation.*", "com.ociweb.greenspring.annotations.*"})
+@SupportedAnnotationTypes({"org.springframework.web.bind.annotation.*", "com.ociweb.greenspring.annotation.*"})
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 //@AutoService(CreateGreenSpringApp.class) - Google thing to produce meta file
 public class CreateGreenSpringApp extends AbstractProcessor {

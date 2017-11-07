@@ -1,8 +1,8 @@
 package com.ociweb.greenspring;
 
 import com.ociweb.gl.api.*;
-import com.ociweb.greenspring.annotations.GreenParallelism;
-import com.ociweb.greenspring.annotations.GreenServiceScope;
+import com.ociweb.greenspring.annotation.GreenParallelism;
+import com.ociweb.greenspring.annotation.GreenServiceScope;
 import com.squareup.javapoet.*;
 import org.springframework.web.bind.annotation.RequestMapping;
 

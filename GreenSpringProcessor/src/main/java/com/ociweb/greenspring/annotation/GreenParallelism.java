@@ -1,4 +1,4 @@
-package com.ociweb.greenspring.annotations;
+package com.ociweb.greenspring.annotation;
 
 public @interface GreenParallelism {
     boolean parallelBehaviorDefault = false;
