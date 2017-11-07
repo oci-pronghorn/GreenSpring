@@ -2,6 +2,7 @@ package com.ociweb.greenspring;
 
 import com.ociweb.gl.api.*;
 import com.ociweb.greenspring.annotations.GreenParallelism;
+import com.ociweb.greenspring.annotations.GreenServiceScope;
 import com.squareup.javapoet.*;
 import org.springframework.web.bind.annotation.RequestMapping;
 
@@ -18,9 +19,9 @@ class GreenBehaviorBuilder {
     private final ClassName serviceName;
     private final ClassName behaviorName;
     private final String subPackage;
-    public final boolean parallelBehavior;
+    private final boolean parallelBehavior;
     private final boolean parallelRoutes;
-    private final GreenServiceScope serviceScope;
+    private final int serviceScope;
     private final String baseRoute;
     private final TypeSpec.Builder builder;
     private final List<GreenRouteBuilder> routes = new ArrayList<>();
@@ -42,9 +43,9 @@ class GreenBehaviorBuilder {
             this.serviceScope = paralellism.serviceScope();
         }
         else {
-            this.parallelBehavior = false;
-            this.parallelRoutes = false;
-            this.serviceScope = GreenServiceScope.behavior;
+            this.parallelBehavior = GreenParallelism.parallelBehaviorDefault;
+            this.parallelRoutes = GreenParallelism.parallelRoutesDefault;
+            this.serviceScope = GreenParallelism.serviceScopeDefault;
         }
 
         this.builder = TypeSpec.classBuilder(behaviorName)
@@ -55,6 +56,10 @@ class GreenBehaviorBuilder {
 
     ClassName getBehaviorName() {
         return behaviorName;
+    }
+
+    boolean isParallelBehavior() {
+        return parallelBehavior;
     }
 
     String getConfigInvocation() {

@@ -76,7 +76,7 @@ class GreenSpringAppBuilder {
                 .addParameter(GreenRuntime.class, "runtime");
 
         for (GreenBehaviorBuilder model : models) {
-            if (model.parallelBehavior) {
+            if (model.isParallelBehavior()) {
                 declareParallelBehavior.addStatement("$T.$L(runtime)", model.getBehaviorName(), model.getBehaviorInvocation());
             }
             else {

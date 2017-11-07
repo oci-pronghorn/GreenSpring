@@ -1,7 +1,7 @@
 package com.ociweb.apis.other.controllers;
 
 import com.ociweb.apis.model.*;
-import com.ociweb.greenspring.GreenServiceScope;
+import com.ociweb.greenspring.annotations.GreenServiceScope;
 import com.ociweb.greenspring.annotations.GreenParallelism;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
