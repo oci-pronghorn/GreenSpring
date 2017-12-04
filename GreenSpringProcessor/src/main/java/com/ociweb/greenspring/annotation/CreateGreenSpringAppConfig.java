@@ -25,21 +25,4 @@ public class CreateGreenSpringAppConfig {
     public int getPort() {
         return port;
         }
-
-    public static String normalizedRoute(RequestMapping mapping) {
-        String[] routeStrs = mapping.value();
-        if (routeStrs.length > 0) {
-            String routeStr = routeStrs[0];
-            if (routeStr.length() > 1) {
-                if (routeStr.charAt(routeStr.length() - 1) == '/') {
-                    routeStr = routeStr.substring(0, routeStr.length()-1);
-                }
-            }
-            if (routeStr.charAt(0) != '/') {
-                routeStr = '/' + routeStr;
-            }
-            return routeStr;
-        }
-        return "/";
-    }
 }

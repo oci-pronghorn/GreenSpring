@@ -1,7 +1,9 @@
 package com.ociweb.greenspring;
 
+import com.ociweb.greenspring.adaptors.GreenRoute;
 import com.ociweb.greenspring.annotation.CreateGreenSpringAppConfig;
-import org.springframework.web.bind.annotation.RequestMapping;
+import com.ociweb.greenspring.builder.GreenBehaviorBuilder;
+import com.ociweb.greenspring.builder.GreenSpringAppBuilder;
 
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
@@ -9,15 +11,20 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+
 import javax.tools.Diagnostic;
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 
 
-@SupportedAnnotationTypes({"org.springframework.web.bind.annotation.*", "com.ociweb.greenspring.annotation.*"})
+@SupportedAnnotationTypes({
+        "org.springframework.web.bind.annotation.*",
+        "com.ociweb.greenspring.annotation.*"})
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
-//@AutoService(CreateGreenSpringApp.class) - Google thing to produce meta file
-public class CreateGreenSpringApp extends AbstractProcessor {
+//@AutoService(GreenSpringProcessor.class) - Google thing to produce meta file
+
+public class GreenSpringProcessor extends AbstractProcessor {
     private Filer filer;
     private Messager messager;
     private final CreateGreenSpringAppConfig config = new CreateGreenSpringAppConfig();
@@ -35,19 +42,17 @@ public class CreateGreenSpringApp extends AbstractProcessor {
             return true;
         }
         GreenSpringAppBuilder app = new GreenSpringAppBuilder(config.getAppName(), config.getSubPackage(), config.getPort());
-        GreenBehaviorBuilder current = null;
-        for (Element element : roundEnv.getElementsAnnotatedWith(RequestMapping.class)) {
-            RequestMapping mapping = element.getAnnotation(RequestMapping.class);
-            if (element.getKind() == ElementKind.CLASS) {
-                current = null;
-                try {
-                    current = new GreenBehaviorBuilder(mapping, element, config.getSubPackage());
-                    app.addBehavior(current);
-                } catch (ClassNotFoundException e) {
-                    messager.printMessage(Diagnostic.Kind.ERROR, e.getLocalizedMessage(), element);
+
+        for (GreenRoute controller : GreenRoute.fetchControllers(roundEnv)) {
+            Element element = controller.getElement();
+            try {
+                GreenBehaviorBuilder current = new GreenBehaviorBuilder(controller, config.getSubPackage());
+                app.addBehavior(current);
+                for (GreenRoute route : GreenRoute.fetchMethods(element)) {
+                    current.addRoutedMethod(route);
                 }
-            } else if (current != null && element.getKind() == ElementKind.METHOD) {
-                current.addRoutedMethod(mapping, (ExecutableElement) element);
+            } catch (ClassNotFoundException e) {
+                messager.printMessage(Diagnostic.Kind.ERROR, e.getLocalizedMessage(), element);
             }
         }
         try {

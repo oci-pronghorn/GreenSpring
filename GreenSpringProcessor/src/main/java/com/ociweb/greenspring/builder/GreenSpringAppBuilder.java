@@ -1,8 +1,9 @@
-package com.ociweb.greenspring;
+package com.ociweb.greenspring.builder;
 
 import com.ociweb.gl.api.Builder;
 import com.ociweb.gl.api.GreenAppParallel;
 import com.ociweb.gl.api.GreenRuntime;
+
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
@@ -14,20 +15,20 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-class GreenSpringAppBuilder {
+public class GreenSpringAppBuilder {
     private final int port;
     private final List<GreenBehaviorBuilder> models = new ArrayList<>();
     private final String appName;
     private final String subPackage;
     private String topPackage = null;
 
-    GreenSpringAppBuilder(String appName, String subPackage, int port) {
+    public GreenSpringAppBuilder(String appName, String subPackage, int port) {
         this.appName = appName;
         this.subPackage = subPackage;
         this.port = port;
     }
 
-    void addBehavior(GreenBehaviorBuilder model) {
+    public void addBehavior(GreenBehaviorBuilder model) {
         models.add(model);
 
         String newPackage = model.getBehaviorName().packageName();
@@ -48,7 +49,7 @@ class GreenSpringAppBuilder {
         }
     }
 
-    void write(Filer filer, String indent) throws IOException {
+    public void write(Filer filer, String indent) throws IOException {
 
         ClassName buildName = ClassName.get(topPackage + subPackage, appName);
 
@@ -59,7 +60,7 @@ class GreenSpringAppBuilder {
         MethodSpec.Builder declareConfiguration = MethodSpec.methodBuilder("declareConfiguration")
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(Builder.class, "builder")
-                .addStatement("builder.enableServer(false, $L)", port)
+                .addStatement("builder.useHTTP1xServer($L)", port)
                 .addStatement("builder.useInsecureNetClient()");
 
         for (GreenBehaviorBuilder model : models) {

@@ -22,6 +22,11 @@ public class LocationInventoryUpdateController extends BaseController {
 			@PathVariable String orgCode) {
 		return new ResponseEntity<Response>(HttpStatus.OK);
 	}
+
+	@GetMapping(value = "hello")
+	public ResponseEntity<Response> sayHello() {
+		return new ResponseEntity<Response>(HttpStatus.OK);
+	}
 }
 
 

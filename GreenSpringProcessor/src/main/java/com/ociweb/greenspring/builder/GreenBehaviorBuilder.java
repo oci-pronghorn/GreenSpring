@@ -1,11 +1,10 @@
-package com.ociweb.greenspring;
+package com.ociweb.greenspring.builder;
 
 import com.ociweb.gl.api.*;
-import com.ociweb.greenspring.annotation.CreateGreenSpringAppConfig;
+import com.ociweb.greenspring.adaptors.GreenRoute;
 import com.ociweb.greenspring.annotation.GreenParallelism;
 import com.ociweb.greenspring.annotation.GreenServiceScope;
 import com.squareup.javapoet.*;
-import org.springframework.web.bind.annotation.RequestMapping;
 
 import javax.annotation.processing.Filer;
 import javax.lang.model.element.Element;
@@ -16,7 +15,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-class GreenBehaviorBuilder {
+public class GreenBehaviorBuilder {
     private final ClassName serviceName;
     private final ClassName behaviorName;
     private final String subPackage;
@@ -27,13 +26,14 @@ class GreenBehaviorBuilder {
     private final TypeSpec.Builder builder;
     private final List<GreenRouteBuilder> routes = new ArrayList<>();
 
-    GreenBehaviorBuilder(RequestMapping mapping, Element element, String subPackage) throws ClassNotFoundException {
+    public GreenBehaviorBuilder(GreenRoute mapping, String subPackage) throws ClassNotFoundException {
+        Element element = mapping.getElement();
         this.subPackage = subPackage;
         Element enclosingElement = element.getEnclosingElement();
         PackageElement packageElement = (PackageElement)enclosingElement;
         this.serviceName = ClassName.get(packageElement.getQualifiedName().toString(), element.getSimpleName().toString());
         this.behaviorName = ClassName.get(packageElement.getQualifiedName().toString() + subPackage, "Green" + element.getSimpleName().toString());
-        this.baseRoute = CreateGreenSpringAppConfig.normalizedRoute(mapping);
+        this.baseRoute = mapping.getNormalizedRoute();
 
         GreenParallelism paralellism = element.getAnnotation(GreenParallelism.class);
         if (paralellism != null) {
@@ -69,7 +69,8 @@ class GreenBehaviorBuilder {
         return "registerBehavior";
     }
 
-    void addRoutedMethod(RequestMapping mapping, ExecutableElement element) {
+    public void addRoutedMethod(GreenRoute mapping) {
+        ExecutableElement element = (ExecutableElement)mapping.getElement();
         GreenRouteBuilder routedMethod = new GreenRouteBuilder(serviceName, subPackage, mapping, element);
         routes.add(routedMethod);
     }

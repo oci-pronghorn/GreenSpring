@@ -1,17 +1,19 @@
-package com.ociweb.greenspring;
+package com.ociweb.greenspring.builder;
 
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.ociweb.gl.api.*;
-import com.ociweb.greenspring.annotation.CreateGreenSpringAppConfig;
+import com.ociweb.greenspring.adaptors.GreenRoute;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.ChannelWriter;
+
 import com.squareup.javapoet.*;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 
 import javax.annotation.processing.Filer;
 import javax.lang.model.element.ExecutableElement;
@@ -29,7 +31,7 @@ class GreenRouteBuilder {
     private final String route;
     private final String methodName;
     private final ClassName behaviorName;
-    private final ParameterizedTypeName responseName;
+    private final TypeName responseName;
     private final TypeName responseBodyName;
     private final Map<String, String> routedParams = new HashMap<>();
     private final Map<String, Integer> routedIds = new HashMap<>();
@@ -56,9 +58,9 @@ class GreenRouteBuilder {
         init.put("double", "httpRequestReader.getDouble($L)");
     }
 
-    GreenRouteBuilder(ClassName serviceName, String subPackage, RequestMapping mapping, ExecutableElement element) {
+    GreenRouteBuilder(ClassName serviceName, String subPackage, GreenRoute mapping, ExecutableElement element) {
         this.serviceName = serviceName;
-        this.route = CreateGreenSpringAppConfig.normalizedRoute(mapping);
+        this.route = mapping.getNormalizedRoute();
         this.methodName = element.getSimpleName().toString();
 
         String packageName = serviceName.packageName() + subPackage + ".routes";
@@ -78,8 +80,15 @@ class GreenRouteBuilder {
             }
             orderedParams.add(param);
         }
-        this.responseName = (ParameterizedTypeName) TypeName.get(element.getReturnType());
-        this.responseBodyName = responseName.typeArguments.get(0);
+
+        this.responseName = TypeName.get(element.getReturnType());
+
+        //if (responseName.toString().endsWith("ResponseEntity")) {
+            this.responseBodyName = ((ParameterizedTypeName)responseName).typeArguments.get(0);
+        //}
+
+        //TypeName returnType = TypeName.get(element.getReturnType());
+
 
         this.builder = TypeSpec.classBuilder(behaviorName)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
