@@ -1,7 +1,5 @@
 package com.ociweb.greenspring.annotation;
 
-import org.springframework.web.bind.annotation.RequestMapping;
-
 // TODO: turn into annotation
 // TODO split into service and code-gen responsibilties
 public class CreateGreenSpringAppConfig {

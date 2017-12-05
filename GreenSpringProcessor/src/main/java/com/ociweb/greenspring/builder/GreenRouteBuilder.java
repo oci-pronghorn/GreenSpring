@@ -1,19 +1,14 @@
 package com.ociweb.greenspring.builder;
 
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import com.ociweb.gl.api.*;
+import com.ociweb.greenspring.adaptors.GreenMethod;
 import com.ociweb.greenspring.adaptors.GreenRoute;
+import com.ociweb.greenspring.adaptors.GreenSerializer;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.ChannelWriter;
 
 import com.squareup.javapoet.*;
-
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
 
 import javax.annotation.processing.Filer;
 import javax.lang.model.element.ExecutableElement;
@@ -27,8 +22,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 class GreenRouteBuilder {
+    private final GreenRoute route;
     private final ClassName serviceName;
-    private final String route;
     private final String methodName;
     private final ClassName behaviorName;
     private final TypeName responseName;
@@ -38,17 +33,8 @@ class GreenRouteBuilder {
     private final List<VariableElement> orderedParams = new ArrayList<>();
     private final TypeSpec.Builder builder;
 
-    private final static Map<String, String> spec = new HashMap<>();
     private final static Map<String, String> init = new HashMap<>();
     static {
-        spec.put("java.lang.String", "$");
-        spec.put("byte", "#");
-        spec.put("short", "#");
-        spec.put("int", "#");
-        spec.put("long", "#");
-        spec.put("float", "%");
-        spec.put("double", "%");
-
         init.put("java.lang.String", "paramToString($L, httpRequestReader)");
         init.put("byte", "httpRequestReader.getByte($L)");
         init.put("short", "httpRequestReader.getShort($L)");
@@ -58,9 +44,13 @@ class GreenRouteBuilder {
         init.put("double", "httpRequestReader.getDouble($L)");
     }
 
-    GreenRouteBuilder(ClassName serviceName, String subPackage, GreenRoute mapping, ExecutableElement element) {
+    private final GreenMethod annotatedMethod = new GreenMethod();
+    private final GreenSerializer serializer = new GreenSerializer();
+
+    GreenRouteBuilder(ClassName serviceName, String subPackage, GreenRoute route) {
+        ExecutableElement element = (ExecutableElement)route.getElement();
+        this.route = route;
         this.serviceName = serviceName;
-        this.route = mapping.getNormalizedRoute();
         this.methodName = element.getSimpleName().toString();
 
         String packageName = serviceName.packageName() + subPackage + ".routes";
@@ -72,8 +62,7 @@ class GreenRouteBuilder {
         for (VariableElement param : parameters) {
             String name = param.getSimpleName().toString();
             String kind = param.asType().toString();
-            PathVariable routeParam = param.getAnnotation(PathVariable.class);
-            if (routeParam != null) {
+            if (annotatedMethod.isParamInRoute(param)) {
                 this.routedParams.put(name, kind);
                 this.routedIds.put(name, idx);
                 idx++;
@@ -146,13 +135,12 @@ class GreenRouteBuilder {
                 .addField(serviceName, "service", Modifier.PRIVATE)
                 .addMethod(setService)
                 .addMethod(paramToString)
-                .addField(FieldSpec.builder(ObjectMapper.class, "mapper", Modifier.PRIVATE, Modifier.FINAL)
-                        .initializer("new $T()", ObjectMapper.class)
-                        .build())
                 .addField(FieldSpec.builder(StringBuilder.class, "paramBuffer", Modifier.PRIVATE, Modifier.FINAL)
                         .initializer("new $T()", StringBuilder.class)
                         .build())
                 .addField(responseBodyName, "responseBody", Modifier.PRIVATE);
+
+        serializer.buildMember(builder);
     }
 
     private void buildReader() {
@@ -197,12 +185,8 @@ class GreenRouteBuilder {
         for (VariableElement param : orderedParams) {
             TypeName kind = TypeName.get(param.asType());
             String name = param.getSimpleName().toString();
-            RequestBody requestBodyParam = param.getAnnotation(RequestBody.class);
-            if (requestBodyParam != null) {
-                builder.addField(FieldSpec.builder(JavaType.class, "requestBodyType")
-                        .addModifiers(Modifier.PRIVATE, Modifier.FINAL)
-                        .initializer(initializerForType(kind))
-                        .build());
+            if (annotatedMethod.isParamRequestBody(param)) {
+                serializer.buildRecycledMember(builder, kind);
                 builder.addField(FieldSpec.builder(kind, "requestBody")
                         .addModifiers(Modifier.PRIVATE)
                         .build());
@@ -210,8 +194,7 @@ class GreenRouteBuilder {
                 method.addStatement("$T $L = requestBody", kind, name);
             }
             else {
-                PathVariable routeParam = param.getAnnotation(PathVariable.class);
-                if (routeParam != null) {
+                if (annotatedMethod.isParamInRoute(param)) {
                     String key = kind.toString();
                     String initializer = init.get(key);
                     method.addStatement("$T $L = " + initializer, kind, name, routedIds.get(name));
@@ -228,46 +211,14 @@ class GreenRouteBuilder {
         method.addStatement("channel.publishHTTPResponse(httpRequestReader, response.getStatusCodeValue(), $T.JSON, this)", HTTPContentTypeDefaults.class);
         method.endControlFlow();
         method.beginControlFlow("catch (Throwable e)");
-        method.addStatement("channel.publishHTTPResponse(httpRequestReader, $T.BAD_REQUEST.value())", HttpStatus.class);
+        method.addStatement("channel.publishHTTPResponse(httpRequestReader, 400)");
         method.endControlFlow();
         method.addStatement("return true");
 
         builder.addMethod(method.build());
     }
 
-    private CodeBlock initializerForType(TypeName kind) {
-        if (kind instanceof ParameterizedTypeName) {
-            ParameterizedTypeName param = (ParameterizedTypeName)kind;
-            TypeName sub = param.typeArguments.get(0);
-            return CodeBlock.of("mapper.getTypeFactory().constructCollectionType($T.class, $T.class)", ArrayList.class, sub);
-        }
-        return CodeBlock.of("mapper.getTypeFactory().constructType($T)", kind);
-    }
-
-    String getGreenRoute(String base) {
-        int s = 1;
-        StringBuilder transformed = new StringBuilder();
-        transformed.append(base);
-        do {
-            int p = route.indexOf("/", s);
-            if (p == -1) {
-                p = route.length();
-            }
-            String partial = route.substring(s, p);
-            if (partial.charAt(0) == '{') {
-                String key = partial.substring(1, partial.length() - 1);
-                String kind = routedParams.get(key);
-                if (kind != null) {
-                    String typeSpec = spec.get(kind);
-                    if (typeSpec != null) {
-                        partial = typeSpec + partial;
-                    }
-                }
-            }
-            transformed.append("/").append(partial);
-            s = p + 1;
-        } while (s < route.length());
-
-        return transformed.toString();
+    String getGreenRoute(String baseRoute) {
+        return this.route.getGreenRouteString(baseRoute, routedParams);
     }
 }

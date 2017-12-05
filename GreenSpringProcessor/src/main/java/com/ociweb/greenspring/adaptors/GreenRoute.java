@@ -7,12 +7,25 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class GreenRoute {
     private final String routeStr;
     private final Element element;
+
+    private final static Map<String, String> spec = new HashMap<>();
+    static {
+        spec.put("java.lang.String", "$");
+        spec.put("byte", "#");
+        spec.put("short", "#");
+        spec.put("int", "#");
+        spec.put("long", "#");
+        spec.put("float", "%");
+        spec.put("double", "%");
+    }
 
     public static List<GreenRoute> fetchControllers(RoundEnvironment roundEnv) {
         return roundEnv.getElementsAnnotatedWith(RequestMapping.class).stream()
@@ -68,5 +81,33 @@ public class GreenRoute {
             norm = "/";
         }
         return norm;
+    }
+
+    public String getGreenRouteString(String baseRoute, Map<String, String> routedParams) {
+        int s = 1;
+        String route = getNormalizedRoute();
+        StringBuilder transformed = new StringBuilder();
+        transformed.append(baseRoute);
+        do {
+            int p = route.indexOf("/", s);
+            if (p == -1) {
+                p = route.length();
+            }
+            String partial = route.substring(s, p);
+            if (partial.charAt(0) == '{') {
+                String key = partial.substring(1, partial.length() - 1);
+                String kind = routedParams.get(key);
+                if (kind != null) {
+                    String typeSpec = spec.get(kind);
+                    if (typeSpec != null) {
+                        partial = typeSpec + partial;
+                    }
+                }
+            }
+            transformed.append("/").append(partial);
+            s = p + 1;
+        } while (s < route.length());
+
+        return transformed.toString();
     }
 }

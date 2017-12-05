@@ -8,7 +8,6 @@ import com.squareup.javapoet.*;
 
 import javax.annotation.processing.Filer;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
 import java.io.IOException;
@@ -69,9 +68,8 @@ public class GreenBehaviorBuilder {
         return "registerBehavior";
     }
 
-    public void addRoutedMethod(GreenRoute mapping) {
-        ExecutableElement element = (ExecutableElement)mapping.getElement();
-        GreenRouteBuilder routedMethod = new GreenRouteBuilder(serviceName, subPackage, mapping, element);
+    public void addRoutedMethod(GreenRoute route) {
+        GreenRouteBuilder routedMethod = new GreenRouteBuilder(serviceName, subPackage, route);
         routes.add(routedMethod);
     }
 
