@@ -7,6 +7,7 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,26 +33,33 @@ public class GreenRoute {
                 .filter(element -> element.getKind() == ElementKind.CLASS)
                 .map(element -> {
                     RequestMapping mapping = element.getAnnotation(RequestMapping.class);
-                    return new GreenRoute(mapping, element);
+                    return new GreenRoute(mapping.value(), element);
                 }
         ).collect(Collectors.toList());
     }
 
     public static List<GreenRoute> fetchMethods(Element controller) {
-        return controller.getEnclosedElements().stream()
-                .filter(element -> element.getKind() == ElementKind.METHOD)
-                .filter(element -> element.getAnnotation(RequestMapping.class) != null)
-                .map(element -> {
-                    RequestMapping mapping = element.getAnnotation(RequestMapping.class);
-                    return new GreenRoute(mapping, element);
+        List<GreenRoute> routes = new ArrayList<>();
+        for (Element element : controller.getEnclosedElements()) {
+            if (element.getKind() == ElementKind.METHOD) {
+                RequestMapping m1 = element.getAnnotation(RequestMapping.class);
+                if (m1 != null) {
+                    routes.add(new GreenRoute(m1.value(), element));
                 }
-        ).collect(Collectors.toList());
+                else {
+                    GetMapping m2 = element.getAnnotation(GetMapping.class);
+                    if (m2 != null) {
+                        routes.add(new GreenRoute(m2.value(), element));
+                    }
+                }
+            }
+        }
+        return routes;
     }
 
-    private GreenRoute(RequestMapping springAnnotation, Element element) {
+    private GreenRoute(String[] routeStrs, Element element) {
         this.element = element;
-        String[] routeStrs = springAnnotation.value();
-        if (routeStrs.length > 0) {
+        if (routeStrs != null && routeStrs.length > 0) {
             this.routeStr = routeStrs[0];
         }
         else {

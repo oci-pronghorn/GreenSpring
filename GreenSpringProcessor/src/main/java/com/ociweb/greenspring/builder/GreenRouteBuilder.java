@@ -26,6 +26,7 @@ class GreenRouteBuilder {
     private final ClassName serviceName;
     private final String methodName;
     private final ClassName behaviorName;
+    private boolean hasRequestBody;
     private final TypeName responseName;
     private final TypeName responseBodyName;
     private final Map<String, String> routedParams = new HashMap<>();
@@ -58,6 +59,7 @@ class GreenRouteBuilder {
         this.behaviorName = ClassName.get(packageName, className);
 
         int idx = 0;
+        this.hasRequestBody = false;
         List<? extends VariableElement> parameters = element.getParameters();
         for (VariableElement param : parameters) {
             String name = param.getSimpleName().toString();
@@ -66,6 +68,9 @@ class GreenRouteBuilder {
                 this.routedParams.put(name, kind);
                 this.routedIds.put(name, idx);
                 idx++;
+            }
+            else  if (annotatedMethod.isParamRequestBody(param)) {
+                this.hasRequestBody = true;
             }
             orderedParams.add(param);
         }
@@ -81,9 +86,14 @@ class GreenRouteBuilder {
 
         this.builder = TypeSpec.classBuilder(behaviorName)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                .addSuperinterface(RestListener.class)
-                .addSuperinterface(Payloadable.class)
-                .addSuperinterface(Writable.class);
+                .addSuperinterface(RestListener.class);
+
+        if (this.responseName != null) {
+            this.builder.addSuperinterface(Writable.class);
+        }
+        if (hasRequestBody) {
+            this.builder.addSuperinterface(Payloadable.class);
+        }
     }
 
     TypeName getBehaviorName() {
@@ -144,33 +154,29 @@ class GreenRouteBuilder {
     }
 
     private void buildReader() {
-        MethodSpec.Builder method = MethodSpec.methodBuilder("read")
-                .addModifiers(Modifier.PUBLIC)
-                .addAnnotation(Override.class)
-                .addParameter(ChannelReader.class, "channelReader")
-                .beginControlFlow("try")
-                .addStatement("requestBody = mapper.readValue(channelReader, requestBodyType)")
-                .endControlFlow()
-                .beginControlFlow("catch ($T e)", IOException.class)
-                .addStatement("throw new $T(e)", RuntimeException.class)
-                .endControlFlow();
+        if (hasRequestBody) {
+            MethodSpec.Builder method = MethodSpec.methodBuilder("read")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addAnnotation(Override.class)
+                    .addParameter(ChannelReader.class, "channelReader");
 
-        builder.addMethod(method.build());
+            serializer.addRequestBodyRead(method);
+
+            builder.addMethod(method.build());
+        }
     }
 
     private void buildWriter() {
-        MethodSpec.Builder method = MethodSpec.methodBuilder("write")
-                .addModifiers(Modifier.PUBLIC)
-                .addAnnotation(Override.class)
-                .addParameter(ChannelWriter.class, "channelWriter")
-                .beginControlFlow("try")
-                .addStatement("mapper.writeValue(channelWriter, responseBody)")
-                .endControlFlow()
-                .beginControlFlow("catch ($T e)", IOException.class)
-                .addStatement("throw new $T(e)", RuntimeException.class)
-                .endControlFlow();
+        if (responseBodyName != null) {
+            MethodSpec.Builder method = MethodSpec.methodBuilder("write")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addAnnotation(Override.class)
+                    .addParameter(ChannelWriter.class, "channelWriter");
 
-        builder.addMethod(method.build());
+            serializer.addResponseBodyWrite(method);
+
+            builder.addMethod(method.build());
+        }
     }
 
     private void buildRestRequest() {
